@@ -1,11 +1,12 @@
 #!/bin/bash
 set -euo pipefail
 task_root=$(cd -- "$(dirname -- "$0")/.." && pwd)
-task_temporary=$(mktemp -d "${TMPDIR:-/tmp}/desktop-pets-icon.XXXXXX")
+task_temporary=$(mktemp -d "${TMPDIR:-/tmp}/pawlet-icon.XXXXXX")
 trap 'rm -rf "$task_temporary"' EXIT
 mkdir -p "$task_temporary/AppIcon.iconset" "$task_temporary/module-cache"
 xcrun swiftc "$task_root/Tools/make-icon.swift" -module-cache-path "$task_temporary/module-cache" -o "$task_temporary/make-icon"
-"$task_temporary/make-icon" "$task_temporary/base.png"
+"$task_temporary/make-icon" "$task_temporary/base.png" "$task_root/Resources/PawMark.png"
+cp "$task_temporary/base.png" "$task_root/Resources/AppIcon.png"
 for task_size in 16 32 128 256 512; do
     sips -z "$task_size" "$task_size" "$task_temporary/base.png" --out "$task_temporary/AppIcon.iconset/icon_${task_size}x${task_size}.png" >/dev/null
     task_double=$((task_size * 2))

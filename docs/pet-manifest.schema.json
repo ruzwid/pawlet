@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "title": "Desktop Pets manifest",
+  "title": "Pawlet manifest",
   "type": "object",
   "required": ["schemaVersion", "id", "name", "description", "spriteVersion", "atlas"],
   "properties": {

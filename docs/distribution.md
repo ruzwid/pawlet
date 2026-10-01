@@ -12,7 +12,7 @@ The build supports `SIGN_IDENTITY`; the release script supports `NOTARY_PROFILE`
 
 ```sh
 SIGN_IDENTITY='Developer ID Application: Your Name (TEAMID)' \
-NOTARY_PROFILE='desktop-pets-release' bash scripts/release.sh
+NOTARY_PROFILE='pawlet-release' bash scripts/release.sh
 ```
 
 Notarization submits the built app ZIP to Apple and requires network access. The script waits for acceptance, staples the app, then rebuilds the final ZIP and DMG from the stapled app. Failed notarization stops the release. No signing credentials are included in this repository.

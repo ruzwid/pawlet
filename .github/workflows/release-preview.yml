@@ -12,6 +12,6 @@ jobs:
         run: bash scripts/release.sh
       - uses: actions/upload-artifact@v7
         with:
-          name: Desktop-Pets-Mac-preview
+          name: Pawlet-Mac-preview
           path: dist/*
           if-no-files-found: error

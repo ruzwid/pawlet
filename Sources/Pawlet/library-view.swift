@@ -29,7 +29,7 @@ struct LibraryView: View {
         .background(Color(nsColor: .windowBackgroundColor))
         .sheet(isPresented: $app.isCreating) { CreatePetView(app: app) }
         .sheet(isPresented: $formatHelp) { formatPage }
-        .alert("Desktop Pets", isPresented: Binding(get: { app.message != nil }, set: { if !$0 { app.message = nil } })) {
+        .alert("Pawlet", isPresented: Binding(get: { app.message != nil }, set: { if !$0 { app.message = nil } })) {
             Button("OK") { app.message = nil }
         } message: { Text(app.message ?? "") }
         .alert("Rename pet", isPresented: $renaming) {
@@ -46,8 +46,8 @@ struct LibraryView: View {
     private var sidebar: some View {
         VStack(alignment: .leading, spacing: 24) {
             HStack(spacing: 9) {
-                Image(systemName: "pawprint.fill").font(.title2).foregroundStyle(petAccent)
-                Text("Desktop\nPets").font(.system(size: 18, weight: .bold, design: .rounded))
+                Image(nsImage: app.pawImage).resizable().renderingMode(.template).scaledToFit().frame(width: 25, height: 25).foregroundStyle(petAccent).accessibilityHidden(true)
+                Text("Pawlet").font(.system(size: 21, weight: .bold, design: .rounded))
             }.padding(.top, 12)
             VStack(spacing: 5) {
                 navigation("library", title: "Pet library", symbol: "square.grid.2x2")
@@ -173,6 +173,13 @@ struct LibraryView: View {
                     Toggle("Follow the cursor", isOn: $app.settings.followCursor)
                     Toggle("Wander occasionally", isOn: $app.settings.wander)
                     Toggle("Loop working, waiting and review animations", isOn: $app.settings.loopActivities)
+                    LabeledContent("Time between animations") {
+                        Slider(value: $app.settings.animationInterval, in: 0...MotionConstants.MAX_INTERVAL_SECONDS, step: 1)
+                        Text(app.settings.animationInterval == 0 ? "None" : "\(Int(app.settings.animationInterval)) s").monospacedDigit().frame(width: 45)
+                    }
+                    Text("Rest after each idle or activity loop. Zero plays continuously; clicks and greetings still respond immediately.").font(.caption).foregroundStyle(.secondary)
+                    Toggle("Say hello on hover", isOn: $app.settings.greetOnHover)
+                        .help("One short wave when the pointer enters the pet, with a cooldown between greetings.")
                     Toggle("Animate clicks and drags", isOn: $app.settings.animateInteractions)
                     Toggle("Pause all animations", isOn: $app.settings.paused)
                     LabeledContent("Animation speed") { Slider(value: $app.settings.speed, in: 0.5...1.5); Text("\(Int(app.settings.speed * 100))%").monospacedDigit().frame(width: 45) }
@@ -199,15 +206,15 @@ struct LibraryView: View {
 
     private var aboutPage: some View {
         VStack(alignment: .leading, spacing: 20) {
-            Image(systemName: "pawprint.fill").font(.system(size: 44)).foregroundStyle(petAccent)
-            Text("Desktop Pets").font(.system(size: 32, weight: .bold, design: .rounded))
+            Image(nsImage: app.pawImage).resizable().renderingMode(.template).scaledToFit().frame(width: 44, height: 44).foregroundStyle(petAccent).accessibilityHidden(true)
+            Text("Pawlet").font(.system(size: 32, weight: .bold, design: .rounded))
             Text("Your characters. Your desktop.").font(.title3)
             Text("An offline Mac app for collecting and enjoying animated companions. Add a pet pack, import a compatible sprite sheet, or make something new with Codex.").foregroundStyle(.secondary)
             Divider()
             Text("The app works without Codex. Codex is only used when you choose to create new artwork.")
             Text("No accounts, telemetry or network listener. Imported pets are image and metadata files; they don't run code.").font(.callout).foregroundStyle(.secondary)
             Button("Learn about pet packs") { formatHelp = true }
-            Text("Version 0.2.0 · macOS 13+").font(.caption).foregroundStyle(.secondary)
+            Text("Version 0.3.0 · macOS 13+").font(.caption).foregroundStyle(.secondary)
             Spacer()
         }.padding(36).frame(maxWidth: .infinity, alignment: .leading)
     }

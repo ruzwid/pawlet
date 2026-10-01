@@ -1,4 +1,4 @@
 interface:
   display_name: "Create Desktop Pet"
   short_description: "Create and package an importable desktop companion"
-  default_prompt: "Use $create-desktop-pet to turn my character idea into a validated .petpack for Desktop Pets."
+  default_prompt: "Use $create-desktop-pet to turn my character idea into a validated .petpack for Pawlet."

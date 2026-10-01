@@ -42,6 +42,7 @@ final class DesktopPet: NSObject {
     private var nextWander: Double = 0
     private var wanderTarget: CGFloat?
     private var lastTick: Double = ProcessInfo.processInfo.systemUptime
+    private var hoverGreeting = HoverGreeting()
     var visible: Bool { panel.isVisible }
 
     init(atlas: SpriteAtlas, owner: AppDelegate, index: Int) {
@@ -64,7 +65,7 @@ final class DesktopPet: NSObject {
         view.setAccessibilityElement(true)
         view.setAccessibilityRole(.button)
         view.setAccessibilityLabel("\(atlas.name), desktop companion")
-        view.setAccessibilityHelp("Click to wave. Double-click to jump. Drag to move. Right-click for animations.")
+        view.setAccessibilityHelp("Hover or click to wave. Double-click to jump. Drag to move. Right-click for animations.")
         view.sprite = atlas.frame(SpriteFrame(row: 0, column: 0))
         let d = owner.defaults
         if d.object(forKey: "pet.\(atlas.id).x") != nil {
@@ -147,11 +148,19 @@ final class DesktopPet: NSObject {
         tick(ProcessInfo.processInfo.systemUptime)
     }
 
-    func tick(_ now: Double) {
+    func tick(_ now: Double, mouseLocation: NSPoint? = nil) {
         guard let owner = owner, visible else { lastTick = now; return }
         let delta = min(0.1, max(0, now - lastTick)); lastTick = now
         let reduced = NSWorkspace.shared.accessibilityDisplayShouldReduceMotion
-        let mouse = NSEvent.mouseLocation
+        let mouse = mouseLocation ?? NSEvent.mouseLocation
+        let pointerX = Int((mouse.x - panel.frame.minX) / CGFloat(owner.settings.size))
+        let pointerTopY = 207 - Int((mouse.y - panel.frame.minY) / CGFloat(owner.settings.size))
+        let isHovering = panel.frame.contains(mouse) && atlas.isOpaque(SpriteFrame(row: 0, column: 0), x: pointerX, topY: pointerTopY)
+        let shouldGreet = hoverGreeting.shouldGreet(isHovering: isHovering, now: now,
+            isEnabled: owner.settings.greetOnHover,
+            isBlocked: owner.settings.paused || reduced || owner.settings.clickThrough || dragging || wanderTarget != nil || engine.action != nil || engine.baseState != .idle,
+            cooldown: owner.settings.animationInterval)
+        if shouldGreet { engine.perform(.waving, now: now, speed: owner.settings.speed) }
         if hypot(mouse.x - lastPointer.x, mouse.y - lastPointer.y) > 1 {
             lastPointer = mouse; pointerActiveUntil = now + 1.3
         }
@@ -175,7 +184,7 @@ final class DesktopPet: NSObject {
             let center = NSPoint(x: panel.frame.midX, y: panel.frame.minY + panel.frame.height * 0.67)
             gaze = Gaze.frame(dx: Double(mouse.x - center.x), dy: Double(mouse.y - center.y))
         }
-        let frame = engine.frame(now: now, drag: dragState, gaze: gaze, paused: owner.settings.paused, reducedMotion: reduced, animateIdle: owner.settings.animateIdle, loopActivities: owner.settings.loopActivities, speed: owner.settings.speed)
+        let frame = engine.frame(now: now, drag: dragState, gaze: gaze, paused: owner.settings.paused, reducedMotion: reduced, animateIdle: owner.settings.animateIdle, loopActivities: owner.settings.loopActivities, speed: owner.settings.speed, animationInterval: owner.settings.animationInterval)
         if owner.settings.clickThrough { panel.ignoresMouseEvents = true }
         else if dragging { panel.ignoresMouseEvents = false }
         else if panel.frame.contains(mouse) {

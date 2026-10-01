@@ -54,7 +54,8 @@ final class AnimationEngine {
 
     func frame(now: Double, drag: PetState? = nil, gaze: SpriteFrame? = nil,
                paused: Bool = false, reducedMotion: Bool = false,
-               animateIdle: Bool = true, loopActivities: Bool = true, speed: Double = 1) -> SpriteFrame {
+               animateIdle: Bool = true, loopActivities: Bool = true, speed: Double = 1,
+               animationInterval: Double = MotionConstants.DEFAULT_INTERVAL_SECONDS) -> SpriteFrame {
         if action != nil && now >= actionUntil { action = nil }
         let state = drag ?? action ?? baseState
         if state == .idle, action == nil, drag == nil, let gaze = gaze, !paused, !reducedMotion {
@@ -62,10 +63,20 @@ final class AnimationEngine {
             return gaze
         }
         if key != state.rawValue { key = state.rawValue; started = now }
-        let elapsed = Int(max(0, now - started) * min(1.5, max(0.5, speed)) / state.secondsPerFrame)
+        let elapsedSeconds = max(0, now - started)
+        let speedMultiplier = min(MotionConstants.MAX_SPEED_MULTIPLIER, max(MotionConstants.MIN_SPEED_MULTIPLIER, speed))
+        let elapsed = Int(elapsedSeconds * speedMultiplier / state.secondsPerFrame)
         let still = paused || reducedMotion || (state == .idle && !animateIdle)
         let shouldLoop = drag != nil || state == .idle || loopActivities || state.transient
-        let column = still ? 0 : (shouldLoop ? elapsed % state.count : min(elapsed, state.count - 1))
+        let column: Int
+        if still { column = 0 }
+        else if shouldLoop && drag == nil && !state.transient {
+            let duration = Double(state.count) * state.secondsPerFrame / speedMultiplier
+            let interval = animationInterval.isFinite ? min(MotionConstants.MAX_INTERVAL_SECONDS, max(0, animationInterval)) : MotionConstants.DEFAULT_INTERVAL_SECONDS
+            let cycleElapsed = elapsedSeconds.truncatingRemainder(dividingBy: duration + interval)
+            column = cycleElapsed >= duration ? (state == .idle ? 0 : state.count - 1)
+                : min(state.count - 1, Int(cycleElapsed * speedMultiplier / state.secondsPerFrame))
+        } else { column = shouldLoop ? elapsed % state.count : min(elapsed, state.count - 1) }
         return SpriteFrame(row: state.row, column: column)
     }
 }
@@ -76,7 +87,7 @@ struct StateCommand {
     let seconds: Double?
 
     static func parse(_ url: URL) -> StateCommand? {
-        guard url.scheme?.lowercased() == "desktoppets", url.host?.lowercased() == "state",
+        guard ["pawlet", "desktoppets"].contains(url.scheme?.lowercased() ?? ""), url.host?.lowercased() == "state",
               let parts = URLComponents(url: url, resolvingAgainstBaseURL: false) else { return nil }
         let items = parts.queryItems ?? []
         let pet = items.first(where: { $0.name == "pet" })?.value ?? "both"

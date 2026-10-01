@@ -1,4 +1,4 @@
-# Desktop Pets development
+# Pawlet development
 
 Native macOS 13+ SwiftUI/AppKit app. Build with `bash scripts/build.sh`; runtime needs no Codex, Python or network. Test meaningful engine/import/lifecycle changes with `bash scripts/test.sh`; use `--ui` for isolated native window checks.
 

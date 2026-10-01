@@ -5,7 +5,7 @@ import UniformTypeIdentifiers
 
 final class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject {
     let defaults: UserDefaults = CommandLine.arguments.contains("--ui-smoke-test")
-        ? UserDefaults(suiteName: "community.desktoppets.tests")! : .standard
+        ? UserDefaults(suiteName: "com.ruzwid.pawlet.tests")! : .standard
     @Published var entries: [LibraryPet] = []
     @Published var selectedID: String?
     @Published var statuses: [String: String] = [:]
@@ -21,6 +21,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject {
     var controls: NSWindow?
     var timer: Timer?
     var thumbnails: [String: NSImage] = [:]
+    lazy var pawImage: NSImage = {
+        let image = Bundle.main.url(forResource: "PawMark", withExtension: "png").flatMap(NSImage.init(contentsOf:))
+            ?? NSImage(systemSymbolName: "pawprint.fill", accessibilityDescription: "Pawlet")!
+        image.isTemplate = true; image.size = NSSize(width: 18, height: 18)
+        return image
+    }()
     private var ready = false
     private var pendingURLs: [URL] = []
     private var pendingImports: [URL] = []
@@ -31,16 +37,24 @@ final class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject {
             forEventClass: AEEventClass(kInternetEventClass), andEventID: AEEventID(kAEGetURL))
     }
     func applicationDidFinishLaunching(_ notification: Notification) {
+        if !CommandLine.arguments.contains("--ui-smoke-test"), defaults.object(forKey: "settings") == nil,
+           let previous = defaults.persistentDomain(forName: "community.desktoppets.app") {
+            for (key, value) in previous where key == "settings" || key.hasPrefix("pet.") || key.hasPrefix("removed.") { defaults.set(value, forKey: key) }
+        }
         if let data = defaults.data(forKey: "settings"), let saved = try? JSONDecoder().decode(AppSettings.self, from: data) { settings = saved }
-        // Version 0.2 intentionally begins calmly, even when upgrading the prototype.
         do {
             let support: URL
             if let i = CommandLine.arguments.firstIndex(of: "--ui-smoke-test"), i + 1 < CommandLine.arguments.count {
                 support = URL(fileURLWithPath: CommandLine.arguments[i + 1], isDirectory: true).appendingPathComponent("test-library")
                 settings = AppSettings()
             } else {
-                support = try FileManager.default.url(for: .applicationSupportDirectory, in: .userDomainMask, appropriateFor: nil, create: true)
-                    .appendingPathComponent("Desktop Pets/Library", isDirectory: true)
+                let applicationSupport = try FileManager.default.url(for: .applicationSupportDirectory, in: .userDomainMask, appropriateFor: nil, create: true)
+                support = applicationSupport.appendingPathComponent("Pawlet/Library", isDirectory: true)
+                let previousLibrary = applicationSupport.appendingPathComponent("Desktop Pets/Library", isDirectory: true)
+                if !FileManager.default.fileExists(atPath: support.path), FileManager.default.fileExists(atPath: previousLibrary.path) {
+                    try FileManager.default.createDirectory(at: support.deletingLastPathComponent(), withIntermediateDirectories: true)
+                    try FileManager.default.copyItem(at: previousLibrary, to: support)
+                }
             }
             library = try PetLibrary(root: support)
             if let resources = Bundle.main.resourceURL {
@@ -52,8 +66,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject {
             reloadLibrary()
         } catch { showError(error); NSApp.terminate(nil); return }
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
-        statusItem.button?.image = NSImage(systemSymbolName: "pawprint.fill", accessibilityDescription: "Desktop Pets")
-        statusItem.button?.toolTip = "Desktop Pets"
+        statusItem.button?.image = pawImage
+        statusItem.button?.toolTip = "Pawlet"
         applyAppearance(); buildMenus()
         ready = true
         for entry in entries where defaults.object(forKey: "pet.\(entry.id).visible") == nil {
@@ -136,7 +150,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject {
         do {
             if enabled { try SMAppService.mainApp.register() } else { try SMAppService.mainApp.unregister() }
             loginEnabled = SMAppService.mainApp.status == .enabled
-            if SMAppService.mainApp.status == .requiresApproval { message = "Approve Desktop Pets in System Settings → General → Login Items." }
+            if SMAppService.mainApp.status == .requiresApproval { message = "Approve Pawlet in System Settings → General → Login Items." }
         } catch { message = "Login setting couldn't be changed: \(error.localizedDescription)" }
     }
 
@@ -196,12 +210,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject {
         menu.addItem(item("Pause animations", action: #selector(pauseMenu), checked: settings.paused))
         menu.addItem(item("Settings…", action: #selector(settingsMenu), key: ","))
         menu.addItem(item("Bring pets back to this screen", action: #selector(resetPositions)))
-        menu.addItem(.separator()); menu.addItem(item("Quit Desktop Pets", action: #selector(quit), key: "q"))
+        menu.addItem(.separator()); menu.addItem(item("Quit Pawlet", action: #selector(quit), key: "q"))
         statusItem.menu = menu
-        let main = NSMenu(), appItem = NSMenuItem(title: "Desktop Pets", action: nil, keyEquivalent: ""), appMenu = NSMenu()
+        let main = NSMenu(), appItem = NSMenuItem(title: "Pawlet", action: nil, keyEquivalent: ""), appMenu = NSMenu()
         appMenu.addItem(item("Pet library…", action: #selector(showControls), key: "l"))
         appMenu.addItem(item("Settings…", action: #selector(settingsMenu), key: ","))
-        appMenu.addItem(.separator()); appMenu.addItem(item("Quit Desktop Pets", action: #selector(quit), key: "q"))
+        appMenu.addItem(.separator()); appMenu.addItem(item("Quit Pawlet", action: #selector(quit), key: "q"))
         appItem.submenu = appMenu; main.addItem(appItem)
         let edit = NSMenu(title: "Edit"), editItem = NSMenuItem(title: "Edit", action: nil, keyEquivalent: "")
         for (title, selector, key) in [("Cut", #selector(NSText.cut(_:)), "x"), ("Copy", #selector(NSText.copy(_:)), "c"),
@@ -217,20 +231,20 @@ final class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject {
     @objc func showControls() {
         if controls == nil {
             let window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 940, height: 680), styleMask: [.titled, .closable, .miniaturizable, .resizable], backing: .buffered, defer: false)
-            window.title = "Desktop Pets"; window.minSize = NSSize(width: 820, height: 580); window.isReleasedWhenClosed = false
+            window.title = "Pawlet"; window.minSize = NSSize(width: 820, height: 580); window.isReleasedWhenClosed = false
             window.contentView = NSHostingView(rootView: LibraryView(app: self)); window.center(); controls = window
         }
         controls?.makeKeyAndOrderFront(nil); NSApp.activate(ignoringOtherApps: true)
     }
     func showError(_ error: Error) {
-        let alert = NSAlert(); alert.messageText = "Desktop Pets couldn't open"; alert.informativeText = error.localizedDescription; alert.runModal()
+        let alert = NSAlert(); alert.messageText = "Pawlet couldn't open"; alert.informativeText = error.localizedDescription; alert.runModal()
     }
     @objc func receiveURL(_ event: NSAppleEventDescriptor, reply: NSAppleEventDescriptor) {
         if let text = event.paramDescriptor(forKeyword: AEKeyword(keyDirectObject))?.stringValue, let url = URL(string: text) { handleURL(url) }
     }
     func handleURL(_ url: URL) {
         guard ready else { pendingURLs.append(url); return }
-        guard url.scheme == "desktoppets" else { return }
+        guard ["pawlet", "desktoppets"].contains(url.scheme?.lowercased() ?? "") else { return }
         if url.host == "controls" { showControls(); return }
         guard let command = StateCommand.parse(url) else { return }
         let targets = entries.filter { command.pet == "both" || command.pet == "all" || $0.id.lowercased() == command.pet || $0.manifest.name.lowercased() == command.pet }
@@ -258,15 +272,36 @@ final class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject {
                 self.settings.size = 1.25
                 guard abs(pet.panel.frame.width - 240) < 0.01 else { throw PetLibraryError.invalid("Size control") }
                 self.settings.size = 1
-                self.handleURL(URL(string: "desktoppets://state?pet=\(entry.id)&state=waiting&seconds=5")!)
+                self.handleURL(URL(string: "pawlet://state?pet=\(entry.id)&state=waiting&seconds=5")!)
                 guard pet.engine.action == .waiting else { throw PetLibraryError.invalid("Dynamic pet command") }
                 pet.engine.reset()
+                let outsidePet = NSPoint(x: pet.panel.frame.minX - 20, y: pet.panel.frame.minY - 20)
+                let overPet = NSPoint(x: pet.panel.frame.minX + 96, y: pet.panel.frame.minY + 87)
+                pet.tick(now, mouseLocation: outsidePet)
+                pet.tick(now + 0.01, mouseLocation: overPet)
+                if !NSWorkspace.shared.accessibilityDisplayShouldReduceMotion {
+                    guard pet.engine.action == .waving else { throw PetLibraryError.invalid("Hover didn't wave") }
+                }
+                pet.tick(now + 2, mouseLocation: overPet)
+                guard pet.engine.action == nil else { throw PetLibraryError.invalid("Stationary hover repeated") }
+                pet.engine.reset()
+                self.settings.paused = true
+                pet.tick(now + 12, mouseLocation: outsidePet)
+                pet.tick(now + 13, mouseLocation: overPet)
+                guard pet.engine.action == nil else { throw PetLibraryError.invalid("Paused hover animated") }
+                self.settings.paused = false
+                self.settings.greetOnHover = false
+                pet.tick(now + 24, mouseLocation: outsidePet)
+                pet.tick(now + 25, mouseLocation: overPet)
+                guard pet.engine.action == nil else { throw PetLibraryError.invalid("Disabled hover animated") }
+                self.settings.greetOnHover = true
                 pet.tick(now)
                 self.updateStatus(entry.id, status: "Idle")
                 try self.captureOwnView(self.controls?.contentView, to: folder.appendingPathComponent("library.png"))
                 let report: [String: Any] = ["ok": true, "calm_idle_stays_still": true, "pack_export_import": true,
                     "dynamic_pet_url": true, "native_window_and_size": true, "library_count": self.entries.count,
-                    "menu_bar": self.statusItem.button != nil]
+                    "menu_bar": self.statusItem.button != nil, "hover_wave": true,
+                    "stationary_hover_does_not_repeat": true, "paused_and_disabled_hover": true]
                 self.section = "settings"
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) {
                     do {

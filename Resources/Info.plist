@@ -1,20 +1,20 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0"><dict>
-<key>CFBundleName</key><string>Desktop Pets</string>
-<key>CFBundleDisplayName</key><string>Desktop Pets</string>
-<key>CFBundleIdentifier</key><string>community.desktoppets.app</string>
-<key>CFBundleExecutable</key><string>DesktopPets</string>
+<key>CFBundleName</key><string>Pawlet</string>
+<key>CFBundleDisplayName</key><string>Pawlet</string>
+<key>CFBundleIdentifier</key><string>com.ruzwid.pawlet</string>
+<key>CFBundleExecutable</key><string>Pawlet</string>
 <key>CFBundlePackageType</key><string>APPL</string>
-<key>CFBundleShortVersionString</key><string>0.2.0</string>
-<key>CFBundleVersion</key><string>2</string>
+<key>CFBundleShortVersionString</key><string>0.3.0</string>
+<key>CFBundleVersion</key><string>3</string>
 <key>LSMinimumSystemVersion</key><string>13.0</string>
 <key>NSHighResolutionCapable</key><true/>
 <key>NSPrincipalClass</key><string>NSApplication</string>
 <key>CFBundleIconFile</key><string>AppIcon</string>
 <key>CFBundleURLTypes</key><array><dict>
-<key>CFBundleURLName</key><string>Desktop Pets controls</string>
-<key>CFBundleURLSchemes</key><array><string>desktoppets</string></array>
+<key>CFBundleURLName</key><string>Pawlet controls</string>
+<key>CFBundleURLSchemes</key><array><string>pawlet</string><string>desktoppets</string></array>
 <key>CFBundleTypeRole</key><string>Viewer</string>
 </dict></array>
 <key>CFBundleDocumentTypes</key><array><dict>

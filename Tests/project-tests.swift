@@ -43,6 +43,39 @@ enum ProjectTests {
         try require(engine.frame(now: 201.2, speed: 0.5).row == 4, "Slow jump expires too early")
         try require(engine.frame(now: 201.5, speed: 0.5).row == 7, "Slow jump doesn't settle")
         engine.reset()
+        let intervalEngine = AnimationEngine()
+        _ = intervalEngine.frame(now: 0, animationInterval: 10)
+        try require(intervalEngine.frame(now: 0.4, animationInterval: 10).column == 1, "Idle must play before resting")
+        try require(intervalEngine.frame(now: 2.2, animationInterval: 10).column == 0, "Idle must rest between loops")
+        try require(intervalEngine.frame(now: 11, animationInterval: 10).column == 0, "Interval was shortened")
+        try require(intervalEngine.frame(now: 12.08, animationInterval: 10).column == 1, "Idle must resume after interval")
+        intervalEngine.perform(.working, now: 20)
+        _ = intervalEngine.frame(now: 20, animationInterval: 10)
+        try require(intervalEngine.frame(now: 22, animationInterval: 10).column == 5, "Activity rest must hold its final pose")
+        try require(intervalEngine.frame(now: 30.85, animationInterval: 10).column == 0, "Activity must resume after rest")
+        intervalEngine.reset()
+        _ = intervalEngine.frame(now: 40, animationInterval: 0)
+        try require(intervalEngine.frame(now: 42.08, animationInterval: 0).column == 1, "Zero interval must loop continuously")
+        intervalEngine.perform(.waving, now: 50)
+        _ = intervalEngine.frame(now: 50, animationInterval: 60)
+        try require(intervalEngine.frame(now: 50.3, animationInterval: 60).column == 2, "Rest interval must not delay greetings")
+        intervalEngine.reset()
+        _ = intervalEngine.frame(now: 60, speed: 0.5, animationInterval: 10)
+        try require(intervalEngine.frame(now: 73, speed: 0.5, animationInterval: 10).column == 0, "Rest duration must not scale with playback speed")
+        try require(intervalEngine.frame(now: 73.94, speed: 0.5, animationInterval: 10).column == 1, "Slow playback must resume after the same real-time interval")
+        var greeting = HoverGreeting()
+        try require(greeting.shouldGreet(isHovering: true, now: 100, isEnabled: true, isBlocked: false, cooldown: 10), "Hover entry must greet")
+        try require(!greeting.shouldGreet(isHovering: true, now: 120, isEnabled: true, isBlocked: false, cooldown: 10), "Stationary pointer must not repeat greeting")
+        _ = greeting.shouldGreet(isHovering: false, now: 121, isEnabled: true, isBlocked: false, cooldown: 10)
+        try require(greeting.shouldGreet(isHovering: true, now: 122, isEnabled: true, isBlocked: false, cooldown: 10), "Re-entry should greet after cooldown")
+        _ = greeting.shouldGreet(isHovering: false, now: 123, isEnabled: true, isBlocked: false, cooldown: 10)
+        try require(!greeting.shouldGreet(isHovering: true, now: 124, isEnabled: true, isBlocked: false, cooldown: 10), "Repeated crossings must be throttled")
+        _ = greeting.shouldGreet(isHovering: false, now: 140, isEnabled: true, isBlocked: false, cooldown: 10)
+        try require(!greeting.shouldGreet(isHovering: true, now: 141, isEnabled: true, isBlocked: true, cooldown: 10), "Pause and Reduce Motion must block greeting")
+        var disabledGreeting = HoverGreeting()
+        try require(!disabledGreeting.shouldGreet(isHovering: true, now: 1, isEnabled: false, isBlocked: false, cooldown: 10), "Disabled hover must stay still")
+        let previousSettings = try JSONDecoder().decode(AppSettings.self, from: Data(#"{"animateIdle":true,"size":1.25,"followCursor":false}"#.utf8))
+        try require(previousSettings.animateIdle && previousSettings.size == 1.25 && previousSettings.animationInterval == 10 && previousSettings.greetOnHover, "Settings upgrade must preserve prior choices and add new defaults")
         try require(engine.frame(now: 300, drag: .runningRight, paused: true).column == 0, "Paused drag")
         try require(engine.frame(now: 301, gaze: SpriteFrame(row: 10, column: 4), reducedMotion: true).row == 0, "Reduced motion")
         let pack = scratch.appendingPathComponent("roundtrip.petpack")
@@ -73,9 +106,9 @@ enum ProjectTests {
         try reject("archive path traversal") { _ = try PetArchive.inspect(unknown) }
         var badVersion = newManifest; badVersion.spriteVersion = 9
         try reject("future schema") { try badVersion.validate() }
-        let target = StateCommand.parse(URL(string: "desktoppets://state?pet=third-pet-test&state=waiting&seconds=8")!)
+        let target = StateCommand.parse(URL(string: "pawlet://state?pet=third-pet-test&state=waiting&seconds=8")!)
         try require(target?.pet == "third-pet-test" && target?.state == .waiting, "Dynamic command target")
-        try require(StateCommand.parse(URL(string: "desktoppets://state?state=idle&seconds=nan")!) == nil, "Non-finite duration")
+        try require(StateCommand.parse(URL(string: "pawlet://state?state=idle&seconds=nan")!) == nil, "Non-finite duration")
         let handoff = try CreationHandoff.prepare(name: "A & B", idea: "A tiny robot + plant", style: "plush", reference: nil,
             resources: resources, workspaces: scratch.appendingPathComponent("workspaces"))
         let params = URLComponents(url: handoff.url, resolvingAgainstBaseURL: false)?.queryItems
@@ -83,11 +116,16 @@ enum ProjectTests {
         try require(params?.first(where: { $0.name == "prompt" })?.value == handoff.prompt, "Prompt encoding")
         try require(!handoff.url.absoluteString.contains("+") && handoff.url.absoluteString.contains("%2B"), "Plus signs must survive browser query decoding")
         try require(FileManager.default.fileExists(atPath: handoff.workspace.appendingPathComponent(".agents/skills/create-desktop-pet/SKILL.md").path), "Skill isn't in creation workspace")
+        let automaticStyle = try CreationHandoff.prepare(name: "Robot", idea: "A tiny robot", style: "choose-for-me", reference: nil,
+            resources: resources, workspaces: scratch.appendingPathComponent("workspaces"))
+        try require(automaticStyle.prompt.contains("Choose a cohesive, cute visual style") && !automaticStyle.prompt.contains("Use the requested visual style"), "Choose for me must delegate a consistent style choice")
+        try require(handoff.prompt.contains("Use the requested visual style: plush"), "Explicit style must be preserved")
         let report: [String: Any] = ["ok": true, "checks": ["exact sample hash", "73 populated cells", "transparent hit zones",
             "all nine animation clocks", "sixteen cursor directions", "calm idle", "non-looping activities", "speed-aware transient lifetime",
             "pause and reduced motion", "pet-pack roundtrip preserves bytes", "arbitrary third pet", "rename persistence",
             "duplicate import rejected", "path traversal rejected", "truncated archive rejected", "schema validation",
-            "dynamic command targets", "Codex prompt encoding", "creation skill bundled"]]
+            "dynamic command targets", "Codex prompt encoding", "creation skill bundled", "idle and activity rest intervals",
+            "zero interval and playback speed", "hover entry and cooldown", "blocked and disabled hover", "settings upgrade", "automatic and explicit artwork styles"]]
         print(String(data: try JSONSerialization.data(withJSONObject: report, options: [.prettyPrinted, .sortedKeys]), encoding: .utf8)!)
     }
 }
