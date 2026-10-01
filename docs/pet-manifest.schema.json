@@ -1,0 +1,17 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Desktop Pets manifest",
+  "type": "object",
+  "required": ["schemaVersion", "id", "name", "description", "spriteVersion", "atlas"],
+  "properties": {
+    "schemaVersion": {"const": 1},
+    "id": {"type": "string", "pattern": "^[A-Za-z0-9_-]{1,64}$"},
+    "name": {"type": "string", "minLength": 1, "maxLength": 60},
+    "description": {"type": "string", "maxLength": 600},
+    "spriteVersion": {"enum": [1, 2]},
+    "atlas": {"const": "spritesheet.png"},
+    "author": {"type": "string", "maxLength": 100},
+    "artworkSHA256": {"type": "string", "pattern": "^[A-Fa-f0-9]{64}$"}
+  },
+  "additionalProperties": true
+}
