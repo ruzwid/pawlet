@@ -1,0 +1,28 @@
+name: Mac checks
+on:
+  push:
+    branches: [main]
+  pull_request:
+permissions:
+  contents: read
+jobs:
+  test:
+    strategy:
+      fail-fast: false
+      matrix:
+        runner: [macos-15, macos-15-intel]
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - uses: actions/checkout@v7
+      - name: Build universal app
+        run: bash scripts/build.sh
+      - name: Packaging test dependencies
+        run: |
+          python3 -m venv .venv
+          .venv/bin/python -m pip install -r requirements-dev.txt
+      - name: Verify behavior and pet packs
+        run: PYTHON=.venv/bin/python bash scripts/test.sh
+      - name: Verify bundle integrity and architectures
+        run: |
+          codesign --verify --deep --strict 'build/Desktop Pets.app'
+          lipo -archs 'build/Desktop Pets.app/Contents/MacOS/DesktopPets'

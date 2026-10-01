@@ -1,0 +1,17 @@
+name: Build downloadable preview
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  package:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v7
+      - name: Build and package preview
+        run: bash scripts/release.sh
+      - uses: actions/upload-artifact@v7
+        with:
+          name: Desktop-Pets-Mac-preview
+          path: dist/*
+          if-no-files-found: error

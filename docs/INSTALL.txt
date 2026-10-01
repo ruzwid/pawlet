@@ -1,0 +1,16 @@
+Desktop Pets 0.2.0 — macOS 13 or later
+
+Drag Desktop Pets.app to Applications, then open it from Applications.
+The paw in the menu bar opens your library and settings.
+Closing the library keeps the pets running; choose Quit from the paw menu to exit.
+
+Idle motion is off by default. Import a .petpack to add another character.
+Click to wave, double-click to jump, drag to move, or right-click for actions.
+Create opens a prepared Codex prompt; Codex is optional for running existing pets.
+
+Preview builds are ad-hoc signed and not Apple-notarized. A downloaded preview
+may need approval in System Settings → Privacy & Security. Only approve a build
+you trust. Public releases should be Developer ID signed and notarized.
+
+Source and contribution instructions are in the Desktop Pets source repository.
+This is an independent app, not an official OpenAI product.

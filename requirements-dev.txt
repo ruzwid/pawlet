@@ -1,0 +1,2 @@
+# Only the artwork packaging helper needs Python dependencies.
+Pillow>=10,<13

@@ -1,0 +1,13 @@
+.DS_Store
+build/
+dist/
+work/
+__pycache__/
+*.pyc
+.venv/
+.env
+*.p12
+*.mobileprovision
+*.validation.json
+*.petpack
+!examples/*.petpack

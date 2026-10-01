@@ -1,0 +1,9 @@
+{
+  "schemaVersion": 1,
+  "id": "mochi-sample",
+  "name": "Mochi",
+  "description": "A curious cream kitten with a teal collar.",
+  "spriteVersion": 2,
+  "atlas": "spritesheet.png",
+  "artworkSHA256": "b954b5342df5c3e425ce52825f4c015d61181c4692f4772db0acf4f9e741fde8"
+}
