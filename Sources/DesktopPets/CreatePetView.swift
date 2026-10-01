@@ -90,6 +90,8 @@ enum CreationHandoff {
         try prompt.write(to: workspace.appendingPathComponent("PROMPT.md"), atomically: true, encoding: .utf8)
         var components = URLComponents(); components.scheme = "codex"; components.host = "new"
         components.queryItems = [URLQueryItem(name: "prompt", value: prompt), URLQueryItem(name: "path", value: workspace.path)]
+        // URLSearchParams treats bare + as a space; preserve C++ and similar briefs.
+        components.percentEncodedQuery = components.percentEncodedQuery?.replacingOccurrences(of: "+", with: "%2B")
         guard let url = components.url else { throw PetLibraryError.invalid("Couldn't prepare the Codex link.") }
         return Prepared(prompt: prompt, url: url, workspace: workspace)
     }

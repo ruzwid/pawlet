@@ -81,6 +81,7 @@ enum ProjectTests {
         let params = URLComponents(url: handoff.url, resolvingAgainstBaseURL: false)?.queryItems
         try require(handoff.url.scheme == "codex" && handoff.url.host == "new", "Codex deep link")
         try require(params?.first(where: { $0.name == "prompt" })?.value == handoff.prompt, "Prompt encoding")
+        try require(!handoff.url.absoluteString.contains("+") && handoff.url.absoluteString.contains("%2B"), "Plus signs must survive browser query decoding")
         try require(FileManager.default.fileExists(atPath: handoff.workspace.appendingPathComponent(".agents/skills/create-desktop-pet/SKILL.md").path), "Skill isn't in creation workspace")
         let report: [String: Any] = ["ok": true, "checks": ["exact sample hash", "73 populated cells", "transparent hit zones",
             "all nine animation clocks", "sixteen cursor directions", "calm idle", "non-looping activities", "speed-aware transient lifetime",
