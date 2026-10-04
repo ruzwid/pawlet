@@ -40,6 +40,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject {
             forEventClass: AEEventClass(kInternetEventClass), andEventID: AEEventID(kAEGetURL))
     }
     func applicationDidFinishLaunching(_ notification: Notification) {
+        if CommandLine.arguments.contains("--ui-smoke-test") {
+            defaults.removePersistentDomain(forName: "com.ruzwid.pawlet.tests")
+        }
         if !CommandLine.arguments.contains("--ui-smoke-test"), defaults.object(forKey: "settings") == nil,
            let previous = defaults.persistentDomain(forName: "community.desktoppets.app") {
             for (key, value) in previous where key == "settings" || key.hasPrefix("pet.") || key.hasPrefix("removed.") { defaults.set(value, forKey: key) }

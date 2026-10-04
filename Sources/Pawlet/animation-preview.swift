@@ -91,38 +91,45 @@ struct AnimationPreviewView: View {
         VStack(spacing: 14) {
             VStack(spacing: 0) {
                 HStack {
-                    Menu {
-                        ForEach(model.availableClips) { clip in Button(clip.title) { model.select(clip) } }
-                    } label: { Label(model.clip.title, systemImage: model.clip.symbol).font(.system(size: 12, weight: .semibold)) }
-                        .menuStyle(.borderlessButton).fixedSize().accessibilityLabel("Preview animation")
+                    NativeMenuButton(title: "Preview animation", entries: model.availableClips.map { clip in
+                        .action(clip.title, selected: model.clip == clip) { model.select(clip) }
+                    }) {
+                        HStack(spacing: 5) {
+                            Label(model.clip.title, systemImage: model.clip.symbol)
+                            Image(systemName: "chevron.down").font(.system(size: 9, weight: .semibold)).accessibilityHidden(true)
+                        }.font(.system(size: 12, weight: .semibold)).padding(.horizontal, 8).frame(height: 24)
+                    }.buttonStyle(PawletPlainStyle())
                     Spacer()
                     Text(model.isPlaying ? "PLAYING" : "PREVIEW").font(.system(size: 9, weight: .semibold)).tracking(1.2).foregroundStyle(PawletTheme.secondary)
-                }.padding(12)
+                }.padding(8)
                 ZStack {
-                    Ellipse().fill(petAccent.opacity(0.10)).frame(width: 110, height: 12).offset(y: 64)
+                    Ellipse().fill(petAccent.opacity(0.10)).frame(width: 110, height: 12).offset(y: 60)
                     if let image = model.image {
-                        Image(nsImage: image).resizable().interpolation(.high).scaledToFit().frame(width: 170, height: 158)
+                        Image(nsImage: image).resizable().interpolation(.high).scaledToFit().frame(width: 170, height: 144)
                             .accessibilityLabel("\(model.clip.title), frame \(model.frameIndex + 1) of \(model.clip.count)")
                     } else {
                         Image(systemName: "pawprint").font(.system(size: 52)).foregroundStyle(petAccent.opacity(0.35)).accessibilityHidden(true)
                     }
-                }.frame(maxWidth: .infinity).frame(height: 160)
+                }.frame(maxWidth: .infinity).frame(height: 146)
                 HStack(spacing: 10) {
                     Button { if model.isPlaying { model.stop() } else { model.play() } } label: {
                         Label(model.isPlaying ? "Pause" : "Play", systemImage: model.isPlaying ? "pause.fill" : "play.fill")
                             .font(.system(size: 12, weight: .semibold)).frame(width: 66)
                     }.buttonStyle(PawletActionStyle(compact: true)).disabled(model.reducedMotion || model.atlas == nil)
                     Spacer()
-                    Button { model.step(-1) } label: { Image(systemName: "backward.end.fill") }
+                    Button { model.step(-1) } label: { Image(systemName: "backward.end.fill").frame(width: 28, height: 30) }.buttonStyle(PawletPlainStyle())
                         .accessibilityLabel("Previous frame").help("Pause and show the previous frame")
                     Text("\(model.frameIndex + 1) / \(model.clip.count)").font(.system(size: 11, design: .monospaced)).foregroundStyle(PawletTheme.secondary).frame(width: 48)
-                    Button { model.step(1) } label: { Image(systemName: "forward.end.fill") }
+                    Button { model.step(1) } label: { Image(systemName: "forward.end.fill").frame(width: 28, height: 30) }.buttonStyle(PawletPlainStyle())
                         .accessibilityLabel("Next frame").help("Pause and show the next frame")
-                    Menu {
-                        ForEach([0.5, 1.0, 1.5], id: \.self) { speed in
-                            Button("\(speed.formatted())× speed") { model.setSpeed(speed) }
-                        }
-                    } label: { Text("\(model.speed.formatted())×").font(.caption.monospacedDigit()) }.frame(width: 48)
+                    NativeMenuButton(title: "Preview speed", entries: [0.5, 1.0, 1.5].map { speed in
+                        .action("\(speed.formatted())× speed", selected: model.speed == speed) { model.setSpeed(speed) }
+                    }) {
+                        HStack(spacing: 4) {
+                            Text("\(model.speed.formatted())×").font(.caption.monospacedDigit())
+                            Image(systemName: "chevron.down").font(.system(size: 8)).accessibilityHidden(true)
+                        }.frame(width: 44, height: 30)
+                    }.buttonStyle(PawletPlainStyle())
                 }.buttonStyle(.borderless).padding(16)
             }
             .background(PawletTheme.stage, in: PawletTheme.roundedShape(20))
@@ -132,8 +139,8 @@ struct AnimationPreviewView: View {
                     Text("ANIMATIONS").font(.system(size: 10, weight: .semibold)).tracking(1.3).foregroundStyle(PawletTheme.secondary)
                     Spacer()
                     if model.availableClips.contains(.look) {
-                        Button { model.select(.look) } label: { Label("Gaze", systemImage: "eye").font(.caption) }
-                            .buttonStyle(.borderless).accessibilityLabel("Preview sixteen gaze poses")
+                        Button { model.select(.look) } label: { Label("Gaze", systemImage: "eye").font(.caption).padding(.horizontal, 6).padding(.vertical, 3) }
+                            .buttonStyle(PawletPlainStyle(selected: model.clip == .look)).accessibilityLabel("Preview sixteen gaze poses")
                             .accessibilityAddTraits(model.clip == .look ? .isSelected : []).accessibilityRemoveTraits(model.clip == .look ? [] : .isSelected)
                     }
                 }
@@ -141,11 +148,8 @@ struct AnimationPreviewView: View {
                     ForEach(model.availableClips.filter { $0 != .look }) { clip in
                         Button { model.select(clip) } label: {
                             Label(clip.title, systemImage: clip.symbol).lineLimit(1).minimumScaleFactor(0.85).font(.system(size: 11, weight: model.clip == clip ? .semibold : .medium))
-                                .frame(maxWidth: .infinity, alignment: .leading).padding(.horizontal, 10).frame(height: 33)
-                                .foregroundStyle(model.clip == clip ? petAccent : Color.primary)
-                                .background(model.clip == clip ? petAccent.opacity(0.12) : PawletTheme.surface, in: PawletTheme.roundedShape(9))
-                                .overlay(PawletTheme.roundedShape(9).stroke(model.clip == clip ? petAccent.opacity(0.5) : PawletTheme.border))
-                        }.buttonStyle(.plain).accessibilityAddTraits(model.clip == clip ? .isSelected : []).accessibilityRemoveTraits(model.clip == clip ? [] : .isSelected).help(clip.detail)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                        }.buttonStyle(PawletActionStyle(compact: true, fillsWidth: true, selected: model.clip == clip)).accessibilityAddTraits(model.clip == clip ? .isSelected : []).accessibilityRemoveTraits(model.clip == clip ? [] : .isSelected).help(clip.detail)
                     }
                 }.disabled(model.atlas == nil)
                 Text(model.error ?? (model.reducedMotion ? "Reduce Motion is on. Use the frame arrows to explore each pose." : model.clip.detail))

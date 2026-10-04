@@ -11,6 +11,7 @@ struct LibraryView: View {
     @State private var removing = false
     @State private var formatHelp = false
     @State private var search = ""
+    @FocusState private var searchFocused: Bool
 
     var body: some View {
         HStack(spacing: 0) {
@@ -59,12 +60,12 @@ struct LibraryView: View {
                     .font(.system(size: 12, weight: .medium))
                 Button { app.setAllMinisVisible(!app.hasVisibleMinis) } label: {
                     Label(app.hasVisibleMinis ? "Hide all minis" : "Show all minis", systemImage: app.hasVisibleMinis ? "eye.slash" : "eye")
-                        .font(.system(size: 11, weight: .medium)).frame(maxWidth: .infinity, alignment: .leading)
+                        .font(.system(size: 11, weight: .medium)).lineLimit(1).minimumScaleFactor(0.85).frame(maxWidth: .infinity, alignment: .leading)
                 }.buttonStyle(PawletActionStyle(compact: true)).disabled(app.entries.isEmpty)
                     .help("Show or hide the whole collection without changing the selected preview")
                 Button { app.settings.paused.toggle() } label: {
                     Label(app.settings.paused ? "Resume minis" : "Pause minis", systemImage: app.settings.paused ? "play" : "pause")
-                        .font(.system(size: 11, weight: .medium)).frame(maxWidth: .infinity, alignment: .leading)
+                        .font(.system(size: 11, weight: .medium)).lineLimit(1).minimumScaleFactor(0.85).frame(maxWidth: .infinity, alignment: .leading)
                 }.buttonStyle(PawletActionStyle(compact: true)).help("Pause or resume desktop animations")
             }.padding(10).background(PawletTheme.surface.opacity(0.7), in: PawletTheme.roundedShape(12))
         }.padding(10).frame(width: 156).frame(maxHeight: .infinity).background(PawletTheme.sidebar)
@@ -80,9 +81,8 @@ struct LibraryView: View {
                 Text(title)
             }.font(.system(size: 13, weight: app.section == id ? .semibold : .medium))
                 .frame(maxWidth: .infinity, alignment: .leading).padding(.horizontal, 10).padding(.vertical, 9)
-                .foregroundStyle(app.section == id ? petAccent : PawletTheme.ink)
-                .background(app.section == id ? petAccent.opacity(0.11) : .clear, in: PawletTheme.roundedShape(10))
-        }.buttonStyle(.plain).accessibilityAddTraits(app.section == id ? .isSelected : []).accessibilityRemoveTraits(app.section == id ? [] : .isSelected)
+                .contentShape(PawletTheme.roundedShape(10))
+        }.buttonStyle(PawletPlainStyle(selected: app.section == id, radius: 10)).accessibilityAddTraits(app.section == id ? .isSelected : []).accessibilityRemoveTraits(app.section == id ? [] : .isSelected)
     }
 
     private var filteredPets: [LibraryPet] {
@@ -113,12 +113,11 @@ struct LibraryView: View {
                     VStack(alignment: .leading, spacing: 12) {
                         HStack(spacing: 8) {
                             Image(systemName: "magnifyingglass").foregroundStyle(PawletTheme.secondary).accessibilityHidden(true)
-                            TextField("Find a mini", text: $search).textFieldStyle(.plain).font(.callout).accessibilityLabel("Search minis")
+                            TextField("Find a mini", text: $search).textFieldStyle(.plain).font(.callout).accessibilityLabel("Search minis").focused($searchFocused)
                             if !search.isEmpty {
-                                Button { search = "" } label: { Image(systemName: "xmark.circle.fill") }.buttonStyle(.borderless).accessibilityLabel("Clear search")
+                                Button { search = "" } label: { Image(systemName: "xmark.circle.fill") }.buttonStyle(PawletPlainStyle()).accessibilityLabel("Clear search")
                             }
-                        }.padding(10).background(PawletTheme.surface, in: PawletTheme.roundedShape(10))
-                            .overlay(PawletTheme.roundedShape(10).stroke(PawletTheme.border))
+                        }.padding(10).modifier(PawletFieldBorder(focused: searchFocused))
                         ScrollView {
                             if filteredPets.isEmpty {
                                 Text("No minis found.").font(.callout).foregroundStyle(PawletTheme.secondary).padding(.top, 40)
@@ -136,9 +135,8 @@ struct LibraryView: View {
                 }.frame(maxHeight: .infinity)
             }
             HStack {
-                Button("Mini formats & sharing") { formatHelp = true }.buttonStyle(.link).font(.caption)
+                Button("Mini formats & sharing") { formatHelp = true }.font(.caption).padding(6).buttonStyle(PawletPlainStyle())
                 Spacer()
-                Label("Quiet by default", systemImage: "leaf").font(.caption).foregroundStyle(PawletTheme.secondary)
             }
         }.padding(24)
     }
@@ -146,27 +144,25 @@ struct LibraryView: View {
     private func petCard(_ pet: LibraryPet) -> some View {
         let selected = app.selectedID == pet.id
         let visible = app.isVisible(pet.id)
-        return VStack(alignment: .leading, spacing: 0) {
+        return VStack(alignment: .leading, spacing: 8) {
             Button { app.selectedID = pet.id } label: {
-                VStack(alignment: .leading, spacing: 0) {
+                VStack(alignment: .leading, spacing: 12) {
                     Image(nsImage: app.image(for: pet.id)).resizable().interpolation(.high).scaledToFit()
                         .frame(height: 132).frame(maxWidth: .infinity).padding(.vertical, 8)
-                        .background(PawletTheme.stage.opacity(selected ? 1 : 0.5))
+                        .background(PawletTheme.stage, in: PawletTheme.roundedShape(10))
+                        .clipShape(PawletTheme.roundedShape(10))
                     Text(pet.manifest.name).font(.system(size: 14, weight: .semibold, design: .rounded))
-                        .lineLimit(1).padding(.horizontal, 12).padding(.top, 12).padding(.bottom, 8)
-                }.contentShape(Rectangle())
-            }.buttonStyle(.plain).accessibilityLabel("Select \(pet.manifest.name)")
+                        .lineLimit(1).padding(.horizontal, 4).padding(.bottom, 2)
+                }.frame(maxWidth: .infinity, alignment: .leading).contentShape(Rectangle())
+            }.buttonStyle(PawletPlainStyle(radius: 10)).accessibilityLabel("Select \(pet.manifest.name)")
                 .accessibilityAddTraits(selected ? .isSelected : []).accessibilityRemoveTraits(selected ? [] : .isSelected)
             Button { app.togglePetVisibility(pet.id) } label: {
-                Label(visible ? "Hide mini" : "Show mini", systemImage: visible ? "eye.slash" : "plus.circle")
-                    .font(.system(size: 11, weight: .medium)).frame(maxWidth: .infinity).frame(height: 28)
-                    .foregroundStyle(visible ? petAccent : PawletTheme.ink)
-                    .background(visible ? petAccent.opacity(0.10) : PawletTheme.canvas, in: PawletTheme.roundedShape(8))
-            }.buttonStyle(.plain).accessibilityLabel("\(visible ? "Hide" : "Show") \(pet.manifest.name) on desktop")
+                Label(visible ? "Hide mini" : "Show mini", systemImage: visible ? "eye.slash" : "eye")
+            }.buttonStyle(PawletActionStyle(compact: true, fillsWidth: true))
+                .accessibilityLabel("\(visible ? "Hide" : "Show") \(pet.manifest.name) on desktop")
                 .help("Show or hide \(pet.manifest.name) with one click; keep the current preview selected.")
-                .padding(.horizontal, 10).padding(.bottom, 10)
-        }.background(PawletTheme.surface).clipShape(PawletTheme.roundedShape(14))
-            .overlay(PawletTheme.roundedShape(14).stroke(selected ? petAccent : PawletTheme.border, lineWidth: selected ? 1.5 : 1))
+        }.padding(8).background(PawletTheme.surface, in: PawletTheme.roundedShape(18))
+            .overlay(PawletTheme.roundedShape(18).strokeBorder(selected ? petAccent : PawletTheme.border, lineWidth: selected ? 1.5 : 1).allowsHitTesting(false))
     }
 
     private var settingsPage: some View { SettingsView(app: app) }
@@ -181,7 +177,7 @@ struct LibraryView: View {
             Text("The app works without Codex. Codex is only used when you choose to create new artwork.")
             Text("No accounts, telemetry or network listener. Imported minis are image and metadata files; they don't run code.").font(.callout).foregroundStyle(.secondary)
             Button("Learn about mini packs") { formatHelp = true }.buttonStyle(PawletActionStyle())
-            Text("Version 0.6.1 · macOS 13+").font(.caption).foregroundStyle(.secondary)
+            Text("Version 0.6.2 · macOS 13+").font(.caption).foregroundStyle(.secondary)
             Spacer()
         }.padding(36).frame(maxWidth: .infinity, alignment: .leading)
     }

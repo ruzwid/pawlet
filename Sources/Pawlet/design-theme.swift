@@ -27,31 +27,16 @@ enum PawletTheme {
 }
 
 struct PawletActionStyle: ButtonStyle {
-    @Environment(\.isEnabled) private var isEnabled
     var prominent = false
     var compact = false
+    var fillsWidth = false
+    var selected = false
+
     func makeBody(configuration: Configuration) -> some View {
         configuration.label.font(.system(size: compact ? 11 : 12, weight: .semibold))
+            .frame(maxWidth: fillsWidth ? .infinity : nil)
             .padding(.horizontal, compact ? 8 : 13).frame(height: 34)
-            .foregroundStyle(prominent ? Color.white : PawletTheme.ink)
-            .background(prominent ? PawletTheme.button : PawletTheme.surface, in: PawletTheme.roundedShape(10))
-            .overlay(PawletTheme.roundedShape(10).strokeBorder(prominent ? PawletTheme.button : PawletTheme.border))
-            .opacity(!isEnabled ? 0.45 : configuration.isPressed ? 0.72 : 1)
-    }
-}
-
-struct PawletMenuStyle: ViewModifier {
-    @Environment(\.isEnabled) private var isEnabled
-
-    func body(content: Content) -> some View {
-        content.pickerStyle(.menu).menuStyle(.borderlessButton).buttonStyle(.plain)
-            .padding(.horizontal, 10).padding(.trailing, 14).frame(minHeight: 30)
-            .overlay(alignment: .trailing) {
-                Image(systemName: "chevron.down").font(.system(size: 9, weight: .semibold))
-                    .padding(.trailing, 10).allowsHitTesting(false).accessibilityHidden(true)
-            }
-            .background(PawletTheme.surface, in: PawletTheme.roundedShape(10))
-            .overlay(PawletTheme.roundedShape(10).strokeBorder(PawletTheme.border))
-            .opacity(isEnabled ? 1 : 0.45)
+            .modifier(ControlSurface(background: prominent ? PawletTheme.button : PawletTheme.surface,
+                selected: selected, prominent: prominent, isPressed: configuration.isPressed))
     }
 }

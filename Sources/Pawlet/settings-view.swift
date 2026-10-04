@@ -11,9 +11,9 @@ struct SettingsView: View {
                     HStack {
                         Text("Default hover reaction")
                         Spacer()
-                        Picker("Default hover reaction", selection: $app.settings.hoverReaction) {
-                            ForEach(HoverReaction.allCases, id: \.rawValue) { reaction in Text(reaction.title).tag(reaction) }
-                        }.modifier(PawletMenuStyle()).labelsHidden().fixedSize().disabled(!app.settings.greetOnHover)
+                        ChoiceMenu(title: "Default hover reaction", selection: $app.settings.hoverReaction,
+                            choices: HoverReaction.allCases.map { MenuChoice(value: $0, title: $0.title) })
+                            .disabled(!app.settings.greetOnHover)
                     }
                     hint("Each mini can have its own reaction. Hover plays once and ignores the time between animations.")
                     Divider()
@@ -52,9 +52,9 @@ struct SettingsView: View {
                     HStack {
                         Text("Appearance")
                         Spacer()
-                        Picker("Appearance", selection: $app.settings.appearance) {
-                            Text("System").tag("system"); Text("Light").tag("light"); Text("Dark").tag("dark")
-                        }.modifier(PawletMenuStyle()).labelsHidden().fixedSize()
+                        ChoiceMenu(title: "Appearance", selection: $app.settings.appearance, choices: [
+                            MenuChoice(value: "system", title: "System"), MenuChoice(value: "light", title: "Light"), MenuChoice(value: "dark", title: "Dark")
+                        ])
                     }
                     Divider()
                     HStack(spacing: 10) {
@@ -97,8 +97,7 @@ struct PawletToggleStyle: ToggleStyle {
                             .frame(width: 18, height: 18).padding(3)
                     }.frame(width: 40, height: 24)
             }.frame(minHeight: 26).contentShape(Rectangle())
-                .foregroundStyle(PawletTheme.ink).opacity(isEnabled ? 1 : 0.45)
-        }.buttonStyle(.plain)
+        }.buttonStyle(PawletPlainStyle())
             .accessibilityRepresentation {
                 Toggle(isOn: configuration.$isOn) { configuration.label }.toggleStyle(.switch).disabled(!isEnabled)
             }

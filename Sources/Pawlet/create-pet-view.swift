@@ -2,6 +2,8 @@ import SwiftUI
 import AppKit
 import UniformTypeIdentifiers
 
+enum CreationField: Hashable { case name, idea }
+
 struct CreatePetView: View {
     @ObservedObject var app: AppDelegate
     @State private var name = ""
@@ -9,6 +11,7 @@ struct CreatePetView: View {
     @State private var style = "choose-for-me"
     @State private var reference: URL?
     @State private var error: String?
+    @FocusState private var focusedField: CreationField?
 
     var body: some View {
         VStack(alignment: .leading, spacing: 22) {
@@ -28,21 +31,25 @@ struct CreatePetView: View {
             }.padding(16).frame(maxWidth: .infinity, alignment: .leading).background(PawletTheme.stage, in: PawletTheme.roundedShape(18))
             VStack(alignment: .leading, spacing: 7) {
                 Text("Name").font(.callout.weight(.semibold))
-                TextField("What shall we call them?", text: $name).textFieldStyle(.plain)
+                TextField("What shall we call them?", text: $name).textFieldStyle(.plain).focused($focusedField, equals: .name)
                     .padding(.horizontal, 12).frame(height: 36)
-                    .background(PawletTheme.surface, in: PawletTheme.roundedShape(10))
-                    .overlay(PawletTheme.roundedShape(10).strokeBorder(PawletTheme.border)).accessibilityLabel("Mini name")
+                    .modifier(PawletFieldBorder(focused: focusedField == .name)).accessibilityLabel("Mini name")
             }
             VStack(alignment: .leading, spacing: 6) {
                 Text("What should it look like?").font(.callout.weight(.semibold))
-                TextEditor(text: $idea).accessibilityLabel("Character idea").font(.body)
+                TextEditor(text: $idea).focused($focusedField, equals: .idea).accessibilityLabel("Character idea").font(.body)
                     .scrollContentBackground(.hidden).frame(height: 105).padding(8)
-                    .background(PawletTheme.surface, in: PawletTheme.roundedShape(10))
-                    .clipShape(PawletTheme.roundedShape(10))
-                    .overlay(PawletTheme.roundedShape(10).strokeBorder(PawletTheme.border))
+                    .clipShape(PawletTheme.roundedShape(10)).modifier(PawletFieldBorder(focused: focusedField == .idea))
             }
             HStack {
-                Picker("Style", selection: $style) { Text("Choose for me").tag("choose-for-me"); Text("3D toy").tag("3d-toy"); Text("Plush").tag("plush"); Text("Pixel").tag("pixel"); Text("Clay").tag("clay"); Text("Sticker").tag("sticker") }.modifier(PawletMenuStyle())
+                HStack(spacing: 8) {
+                    Text("Style").font(.callout)
+                    ChoiceMenu(title: "Style", selection: $style, choices: [
+                        MenuChoice(value: "choose-for-me", title: "Choose for me"), MenuChoice(value: "3d-toy", title: "3D toy"),
+                        MenuChoice(value: "plush", title: "Plush"), MenuChoice(value: "pixel", title: "Pixel"),
+                        MenuChoice(value: "clay", title: "Clay"), MenuChoice(value: "sticker", title: "Sticker")
+                    ])
+                }
                 Spacer()
                 Button(reference == nil ? "Add reference image…" : "Change image…") { chooseReference() }.buttonStyle(PawletActionStyle())
             }

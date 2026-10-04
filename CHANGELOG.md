@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.6.2
+
+- Inset each mini’s rounded artwork stage inside its card.
+- Make full sidebar rows clickable and use matching eye / eye-slash visibility controls.
+- Add shared hover and pressed feedback to buttons, cards, menu triggers, fields and settings switches, with Reduce Motion support.
+- Remove the duplicate chevron from the options menu and simplify sharing controls.
+- Remove the Quiet by default footer.
+- Reset isolated UI-test preferences for repeatable native checks.
+
 ## 0.6.1
 
 - Use continuous squircle-style corners for cards, panels, buttons, search, animation chips and switches.

@@ -16,20 +16,24 @@ struct PetInspectorView: View {
                         .font(.caption).foregroundStyle(PawletTheme.secondary)
                 }
                 Spacer(minLength: 8)
-                Menu {
-                    Button("Rename…", action: rename)
-                    Button("Show this mini's files") { app.revealSelected() }
-                    Divider()
-                    Button("Move to Trash…", role: .destructive, action: remove)
-                } label: { Image(systemName: "ellipsis") }.menuStyle(.borderlessButton).frame(width: 25).accessibilityLabel("Options for \(pet.manifest.name)")
+                NativeMenuButton(title: "Options for \(pet.manifest.name)", entries: [
+                    .action("Rename…", perform: rename),
+                    .action("Show this mini's files") { app.revealSelected() },
+                    .separator,
+                    .action("Move to Trash…", perform: remove)
+                ]) {
+                    Image(systemName: "ellipsis").font(.system(size: 14, weight: .semibold))
+                        .frame(width: 32, height: 32)
+                }.buttonStyle(PawletPlainStyle())
+
             }
             HStack(spacing: 12) {
                 Text("On hover").font(.system(size: 12, weight: .medium))
                 Spacer(minLength: 4)
-                Picker("On hover", selection: Binding(get: { app.hoverOverride(for: pet.id)?.rawValue ?? "default" }, set: { app.setHoverOverride(HoverReaction(rawValue: $0), for: pet.id) })) {
-                    Text("Default (\(app.settings.hoverReaction.title))").tag("default")
-                    ForEach(HoverReaction.allCases, id: \.rawValue) { reaction in Text(reaction.title).tag(reaction.rawValue) }
-                }.modifier(PawletMenuStyle()).labelsHidden().font(.callout).fixedSize().disabled(!app.settings.greetOnHover)
+                ChoiceMenu(title: "On hover", selection: Binding(get: { app.hoverOverride(for: pet.id)?.rawValue ?? "default" }, set: { app.setHoverOverride(HoverReaction(rawValue: $0), for: pet.id) }),
+                    choices: [MenuChoice(value: "default", title: "Default (\(app.settings.hoverReaction.title))")]
+                        + HoverReaction.allCases.map { MenuChoice(value: $0.rawValue, title: $0.title) })
+                    .disabled(!app.settings.greetOnHover)
                     .help("Choose this mini's greeting, or follow the default in Settings. Each entry plays once without a cooldown.")
             }.padding(.vertical, 2)
             if !app.settings.greetOnHover { Text("Hover reactions are off in Settings.").font(.caption).foregroundStyle(PawletTheme.secondary) }
@@ -46,11 +50,13 @@ struct PetInspectorView: View {
                 }.buttonStyle(PawletActionStyle()).disabled(preview.clip == .look || preview.atlas == nil || app.settings.paused)
                     .help("Play the selected animation on your desktop mini. Preview playback stays separate.")
                 Spacer(minLength: 0)
-                Menu {
-                    Button("Export mini pack…") { app.exportSelected() }
-                    Button("Export ZIP…") { app.exportSelected(asZIP: true) }
-                    Button("Export for Codex…") { app.exportSelectedForCodex() }
-                } label: { Label("Share", systemImage: "square.and.arrow.up") }.menuStyle(.borderlessButton).fixedSize()
+                NativeMenuButton(title: "Share", entries: [
+                    .action("Export mini pack…") { app.exportSelected() },
+                    .action("Export ZIP…") { app.exportSelected(asZIP: true) },
+                    .action("Export for Codex…") { app.exportSelectedForCodex() }
+                ]) {
+                    Label("Share", systemImage: "square.and.arrow.up")
+                }.buttonStyle(PawletActionStyle())
             }
         }.padding(16)
         .background(PawletTheme.surface.opacity(0.55), in: PawletTheme.roundedShape(18))
