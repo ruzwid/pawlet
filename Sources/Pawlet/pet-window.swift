@@ -65,7 +65,7 @@ final class DesktopPet: NSObject {
         view.setAccessibilityElement(true)
         view.setAccessibilityRole(.button)
         view.setAccessibilityLabel("\(atlas.name), desktop companion")
-        view.setAccessibilityHelp("Hover or click to wave. Double-click to jump. Drag to move. Right-click for animations.")
+        view.setAccessibilityHelp("Hover to greet. Click to wave. Double-click to jump. Drag to move. Right-click for animations.")
         view.sprite = atlas.frame(SpriteFrame(row: 0, column: 0))
         let d = owner.defaults
         if d.object(forKey: "pet.\(atlas.id).x") != nil {
@@ -159,8 +159,8 @@ final class DesktopPet: NSObject {
         let shouldGreet = hoverGreeting.shouldGreet(isHovering: isHovering,
             isEnabled: owner.settings.greetOnHover,
             isBlocked: owner.settings.paused || reduced || owner.settings.clickThrough || dragging || wanderTarget != nil ||
-                (engine.action != nil && engine.action != .waving) || engine.baseState != .idle)
-        if shouldGreet { engine.perform(.waving, now: now, speed: owner.settings.speed) }
+                (engine.action != nil && !engine.isGreeting) || engine.baseState != .idle)
+        if shouldGreet { engine.greet(owner.hoverReaction(for: atlas.id), now: now, speed: owner.settings.speed) }
         if hypot(mouse.x - lastPointer.x, mouse.y - lastPointer.y) > 1 {
             lastPointer = mouse; pointerActiveUntil = now + 1.3
         }

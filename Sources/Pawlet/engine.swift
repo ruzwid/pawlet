@@ -32,12 +32,14 @@ enum Gaze {
 final class AnimationEngine {
     var baseState: PetState = .idle
     private(set) var action: PetState?
+    private(set) var isGreeting = false
     private var actionUntil: Double = 0
     private var key = ""
     private var started: Double = 0
 
     func perform(_ state: PetState, now: Double, seconds: Double? = nil, speed: Double = 1) {
-        key = "" // Repeated greetings restart from the first frame.
+        key = ""
+        isGreeting = false
         if let seconds = seconds, seconds > 0 {
             action = state
             actionUntil = now + min(seconds, 3600)
@@ -50,13 +52,19 @@ final class AnimationEngine {
         }
     }
 
-    func reset() { baseState = .idle; action = nil; key = "" }
+    func greet(_ reaction: HoverReaction, now: Double, speed: Double = 1) {
+        let state = reaction.state
+        perform(state, now: now, seconds: Double(state.count) * state.secondsPerFrame / min(MotionConstants.MAX_SPEED_MULTIPLIER, max(MotionConstants.MIN_SPEED_MULTIPLIER, speed)), speed: speed)
+        isGreeting = true
+    }
+
+    func reset() { baseState = .idle; action = nil; isGreeting = false; key = "" }
 
     func frame(now: Double, drag: PetState? = nil, gaze: SpriteFrame? = nil,
                paused: Bool = false, reducedMotion: Bool = false,
                animateIdle: Bool = true, loopActivities: Bool = true, speed: Double = 1,
                animationInterval: Double = MotionConstants.DEFAULT_INTERVAL_SECONDS) -> SpriteFrame {
-        if action != nil && now >= actionUntil { action = nil }
+        if action != nil && now >= actionUntil { action = nil; isGreeting = false }
         let state = drag ?? action ?? baseState
         if state == .idle, action == nil, drag == nil, let gaze = gaze, !paused, !reducedMotion {
             key = "look"
@@ -70,7 +78,7 @@ final class AnimationEngine {
         let shouldLoop = drag != nil || state == .idle || loopActivities || state.transient
         let column: Int
         if still { column = 0 }
-        else if shouldLoop && drag == nil && !state.transient {
+        else if shouldLoop && drag == nil && action == nil && !state.transient {
             let duration = Double(state.count) * state.secondsPerFrame / speedMultiplier
             let interval = animationInterval.isFinite ? min(MotionConstants.MAX_INTERVAL_SECONDS, max(0, animationInterval)) : MotionConstants.DEFAULT_INTERVAL_SECONDS
             let cycleElapsed = elapsedSeconds.truncatingRemainder(dividingBy: duration + interval)

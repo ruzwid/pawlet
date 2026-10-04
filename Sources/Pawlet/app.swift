@@ -21,6 +21,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject {
     var controls: NSWindow?
     var timer: Timer?
     var thumbnails: [String: NSImage] = [:]
+    let preview = AnimationPreviewModel()
     lazy var pawImage: NSImage = {
         let image = Bundle.main.url(forResource: "PawMark", withExtension: "png").flatMap(NSImage.init(contentsOf:))
             ?? NSImage(systemSymbolName: "pawprint.fill", accessibilityDescription: "Pawlet")!
@@ -207,6 +208,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject {
             reloadLibrary()
         } catch { message = error.localizedDescription }
     }
+    func hoverReaction(for id: String) -> HoverReaction {
+        hoverOverride(for: id) ?? settings.hoverReaction
+    }
+    func hoverOverride(for id: String) -> HoverReaction? {
+        defaults.string(forKey: "pet.\(id).hoverReaction").flatMap(HoverReaction.init(rawValue:))
+    }
+    func setHoverOverride(_ reaction: HoverReaction?, for id: String) {
+        if let reaction = reaction { defaults.set(reaction.rawValue, forKey: "pet.\(id).hoverReaction") }
+        else { defaults.removeObject(forKey: "pet.\(id).hoverReaction") }
+        objectWillChange.send()
+    }
     func revealLibrary() { NSWorkspace.shared.open(library.root) }
     func revealSelected() {
         guard let selected = selected else { return }
@@ -250,8 +262,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject {
     @objc func quit() { NSApp.terminate(nil) }
     @objc func showControls() {
         if controls == nil {
-            let window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 940, height: 680), styleMask: [.titled, .closable, .miniaturizable, .resizable], backing: .buffered, defer: false)
-            window.title = "Pawlet"; window.minSize = NSSize(width: 820, height: 580); window.isReleasedWhenClosed = false
+            let window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 1080, height: 780), styleMask: [.titled, .closable, .miniaturizable, .resizable], backing: .buffered, defer: false)
+            window.title = "Pawlet"; window.titlebarAppearsTransparent = true; window.minSize = NSSize(width: 900, height: 650); window.isReleasedWhenClosed = false
             window.contentView = NSHostingView(rootView: LibraryView(app: self)); window.center(); controls = window
         }
         controls?.makeKeyAndOrderFront(nil); NSApp.activate(ignoringOtherApps: true)
@@ -273,6 +285,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject {
 
     func runUISmokeTest(_ folder: URL) {
         showControls()
+        if let index = CommandLine.arguments.firstIndex(of: "--ui-theme"), index + 1 < CommandLine.arguments.count {
+            settings.appearance = CommandLine.arguments[index + 1]
+        }
+        if CommandLine.arguments.contains("--ui-minimum") { controls?.setContentSize(NSSize(width: 900, height: 650)) }
         DispatchQueue.main.asyncAfter(deadline: .now() + 1) { [weak self] in
             guard let self = self else { return }
             do {
@@ -315,6 +331,34 @@ final class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject {
                     pet.tick(now + 2.04, mouseLocation: overPet)
                     guard pet.engine.action == .waving else { throw PetLibraryError.invalid("Rapid hover re-entry didn't restart wave") }
                 }
+                for reaction in HoverReaction.allCases {
+                    self.setHoverOverride(reaction, for: entry.id)
+                    guard self.hoverReaction(for: entry.id) == reaction else { throw PetLibraryError.invalid("Pet hover override") }
+                    pet.engine.reset()
+                    pet.tick(now + 3, mouseLocation: outsidePet)
+                    pet.tick(now + 3.01, mouseLocation: overPet)
+                    if !NSWorkspace.shared.accessibilityDisplayShouldReduceMotion {
+                        guard pet.engine.action == reaction.state else { throw PetLibraryError.invalid("Selected hover reaction didn't play") }
+                        pet.tick(now + 3.02, mouseLocation: outsidePet)
+                        pet.tick(now + 3.03, mouseLocation: overPet)
+                        guard pet.engine.action == reaction.state && pet.engine.isGreeting else { throw PetLibraryError.invalid("Selected hover reaction didn't restart") }
+                        pet.tick(now + 6, mouseLocation: overPet)
+                        guard pet.engine.action == nil && pet.engine.baseState == .idle else { throw PetLibraryError.invalid("Hover reaction didn't settle") }
+                    }
+                }
+                self.settings.hoverReaction = .hop
+                self.setHoverOverride(nil, for: entry.id)
+                guard self.hoverReaction(for: entry.id) == .hop else { throw PetLibraryError.invalid("Default hover reaction") }
+                self.settings.hoverReaction = .wave
+                self.preview.setReducedMotion(false)
+                self.preview.select(.jumping)
+                guard pet.engine.baseState == .idle else { throw PetLibraryError.invalid("Preview changed desktop state") }
+                self.preview.stop(); self.preview.step(1)
+                guard self.preview.frameIndex == 1 else { throw PetLibraryError.invalid("Preview frame stepping") }
+                self.preview.setReducedMotion(true); self.preview.play()
+                guard !self.preview.isPlaying else { throw PetLibraryError.invalid("Reduced-motion preview played") }
+                self.preview.setReducedMotion(NSWorkspace.shared.accessibilityDisplayShouldReduceMotion)
+                self.preview.select(.idle); self.preview.stop()
                 self.settings.animationInterval = MotionConstants.DEFAULT_INTERVAL_SECONDS
                 pet.engine.reset()
                 self.settings.paused = true
@@ -329,12 +373,18 @@ final class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject {
                 self.settings.greetOnHover = true
                 pet.tick(now)
                 self.updateStatus(entry.id, status: "Idle")
+                self.setPetVisible(entry.id, show: false)
+                self.preview.select(.waving)
+                guard !self.isVisible(entry.id) else { throw PetLibraryError.invalid("Preview showed a hidden desktop pet") }
+                self.preview.stop(); self.preview.select(.idle); self.preview.stop()
+                self.setPetVisible(entry.id, show: true)
                 try self.captureOwnView(self.controls?.contentView, to: folder.appendingPathComponent("library.png"))
                 let report: [String: Any] = ["ok": true, "calm_idle_stays_still": true, "pack_export_import": true,
                     "dynamic_pet_url": true, "native_window_and_size": true, "library_count": self.entries.count,
                     "menu_bar": self.statusItem.button != nil, "hover_wave": true,
                     "stationary_hover_does_not_repeat": true, "paused_and_disabled_hover": true,
-                    "hover_reentry_ignores_loop_interval": true, "pet_size_25_percent": true]
+                    "hover_reentry_ignores_loop_interval": true, "pet_size_25_percent": true,
+                    "per_pet_hover_reactions": true, "preview_does_not_change_desktop": true, "preview_keeps_hidden_pets_hidden": true, "preview_reduced_motion": true, "preview_frame_step": true]
                 self.section = "settings"
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) {
                     do {
@@ -350,7 +400,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject {
                                 self.isCreating = false
                                 self.controls?.endSheet(sheet); sheet.orderOut(nil)
                                 print("Native UI, settings, creation sheet and pet-library checks passed")
-                                DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) { NSApp.terminate(nil) }
+                                if !CommandLine.arguments.contains("--ui-review") {
+                                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) { NSApp.terminate(nil) }
+                                }
                             } catch { fputs("UI test failed: \(error.localizedDescription)\n", stderr); exit(1) }
                         }
                     } catch { fputs("UI test failed: \(error.localizedDescription)\n", stderr); exit(1) }

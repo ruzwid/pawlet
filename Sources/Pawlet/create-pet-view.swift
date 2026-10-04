@@ -11,17 +11,28 @@ struct CreatePetView: View {
     @State private var error: String?
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 18) {
+        VStack(alignment: .leading, spacing: 22) {
             HStack {
                 VStack(alignment: .leading, spacing: 5) {
                     Text("Make a new companion").font(.system(size: 25, weight: .bold, design: .rounded))
                     Text("Bring an idea or a reference image. Codex handles the artwork.").foregroundStyle(.secondary)
                 }; Spacer()
             }
-            TextField("Pet name", text: $name).textFieldStyle(.roundedBorder)
+            HStack(spacing: 12) {
+                Image(systemName: "sparkles").font(.system(size: 24)).foregroundStyle(petAccent)
+                    .frame(width: 54, height: 54).background(petAccent.opacity(0.10), in: RoundedRectangle(cornerRadius: 16)).accessibilityHidden(true)
+                VStack(alignment: .leading, spacing: 5) {
+                    Text("An idea becomes a companion.").font(.system(size: 14, weight: .semibold))
+                    Text("A tiny character with a personality of its own.").font(.callout).foregroundStyle(PawletTheme.secondary)
+                }
+            }.padding(16).frame(maxWidth: .infinity, alignment: .leading).background(PawletTheme.stage, in: RoundedRectangle(cornerRadius: 18))
+            VStack(alignment: .leading, spacing: 7) {
+                Text("Name").font(.callout.weight(.semibold))
+                TextField("What shall we call them?", text: $name).textFieldStyle(.roundedBorder).accessibilityLabel("Pet name")
+            }
             VStack(alignment: .leading, spacing: 6) {
-                Text("What should it look like?").font(.callout.weight(.medium))
-                TextEditor(text: $idea).font(.body).frame(height: 105).padding(6)
+                Text("What should it look like?").font(.callout.weight(.semibold))
+                TextEditor(text: $idea).accessibilityLabel("Character idea").font(.body).frame(height: 105).padding(6)
                     .overlay(RoundedRectangle(cornerRadius: 8).stroke(.quaternary))
             }
             HStack {
@@ -37,9 +48,9 @@ struct CreatePetView: View {
                 Button("Cancel") { app.isCreating = false }.keyboardShortcut(.cancelAction)
                 Spacer()
                 Button("Copy prompt") { prepare(open: false) }.disabled(!valid)
-                Button("Open in Codex") { prepare(open: true) }.buttonStyle(.borderedProminent).tint(petButtonAccent).foregroundStyle(.white).disabled(!valid).opacity(valid ? 1 : 0.55)
+                Button("Open in Codex") { prepare(open: true) }.buttonStyle(PawletActionStyle(prominent: true)).disabled(!valid).opacity(valid ? 1 : 0.55)
             }
-        }.padding(28).frame(width: 540).background(Color(nsColor: .windowBackgroundColor))
+        }.padding(30).frame(width: 550).background(PawletTheme.canvas)
     }
     private var valid: Bool { !name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && (!idea.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || reference != nil) }
     private func chooseReference() {

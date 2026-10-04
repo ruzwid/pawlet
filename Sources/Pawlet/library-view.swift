@@ -1,12 +1,8 @@
 import SwiftUI
 import AppKit
 
-let petAccent = Color(nsColor: NSColor(name: nil) { appearance in
-    appearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua
-        ? NSColor(red: 0.50, green: 0.72, blue: 0.88, alpha: 1)
-        : NSColor(red: 0.24, green: 0.43, blue: 0.57, alpha: 1)
-})
-let petButtonAccent = Color(red: 0.24, green: 0.43, blue: 0.57)
+let petAccent = PawletTheme.accent
+let petButtonAccent = PawletTheme.button
 
 struct LibraryView: View {
     @ObservedObject var app: AppDelegate
@@ -14,6 +10,7 @@ struct LibraryView: View {
     @State private var proposedName = ""
     @State private var removing = false
     @State private var formatHelp = false
+    @State private var search = ""
 
     var body: some View {
         HStack(spacing: 0) {
@@ -26,7 +23,7 @@ struct LibraryView: View {
             }.frame(maxWidth: .infinity, maxHeight: .infinity)
         }
         .tint(petAccent)
-        .background(Color(nsColor: .windowBackgroundColor))
+        .background(PawletTheme.canvas)
         .sheet(isPresented: $app.isCreating) { CreatePetView(app: app) }
         .sheet(isPresented: $formatHelp) { formatPage }
         .alert("Pawlet", isPresented: Binding(get: { app.message != nil }, set: { if !$0 { app.message = nil } })) {
@@ -44,139 +41,137 @@ struct LibraryView: View {
     }
 
     private var sidebar: some View {
-        VStack(alignment: .leading, spacing: 24) {
-            HStack(spacing: 9) {
-                Image(nsImage: app.pawImage).resizable().renderingMode(.template).scaledToFit().frame(width: 25, height: 25).foregroundStyle(petAccent).accessibilityHidden(true)
-                Text("Pawlet").font(.system(size: 21, weight: .bold, design: .rounded))
+        VStack(alignment: .leading, spacing: 30) {
+            HStack(spacing: 10) {
+                Image(nsImage: app.pawImage).resizable().renderingMode(.template).scaledToFit().frame(width: 23, height: 23)
+                    .foregroundStyle(petAccent).padding(10).background(petAccent.opacity(0.10), in: RoundedRectangle(cornerRadius: 14)).accessibilityHidden(true)
+                Text("Pawlet").font(.system(size: 22, weight: .bold, design: .rounded))
             }.padding(.top, 12)
-            VStack(spacing: 5) {
-                navigation("library", title: "Pet library", symbol: "square.grid.2x2")
+            VStack(alignment: .leading, spacing: 9) {
+                Text("YOUR SPACE").font(.system(size: 9, weight: .semibold)).tracking(1.4).foregroundStyle(PawletTheme.secondary).padding(.leading, 11)
+                navigation("library", title: "Companions", symbol: "square.grid.2x2")
                 navigation("settings", title: "Settings", symbol: "slider.horizontal.3")
-                navigation("about", title: "About", symbol: "info.circle")
+                navigation("about", title: "About Pawlet", symbol: "info.circle")
             }
             Spacer()
-            VStack(alignment: .leading, spacing: 7) {
-                Label("\(app.visibility.values.filter { $0 }.count) on desktop", systemImage: "circle.fill")
-                    .font(.caption).foregroundStyle(.secondary)
-                Text("A little company.\nAt your own pace.").font(.caption).foregroundStyle(.secondary)
-            }.padding(.bottom, 10)
-        }.padding(.horizontal, 16).padding(.vertical, 18).frame(width: 154)
-            .frame(maxHeight: .infinity).background(.thinMaterial)
+            VStack(alignment: .leading, spacing: 13) {
+                Label("\(app.visibility.values.filter { $0 }.count) on desktop", systemImage: "desktopcomputer")
+                    .font(.system(size: 12, weight: .medium))
+                Text("A little company.\nAt your own pace.").font(.caption).foregroundStyle(PawletTheme.secondary).lineSpacing(4)
+                Button { app.settings.paused.toggle() } label: {
+                    Label(app.settings.paused ? "Resume pets" : "Pause pets", systemImage: app.settings.paused ? "play" : "pause")
+                        .font(.system(size: 11, weight: .medium)).frame(maxWidth: .infinity, alignment: .leading)
+                }.buttonStyle(PawletActionStyle()).help("Pause or resume desktop animations")
+            }.padding(14).background(PawletTheme.surface.opacity(0.7), in: RoundedRectangle(cornerRadius: 15))
+        }.padding(18).frame(width: 168).frame(maxHeight: .infinity).background(.thinMaterial)
     }
     private func navigation(_ id: String, title: String, symbol: String) -> some View {
         Button { app.section = id } label: {
-            Label(title, systemImage: symbol).font(.system(size: 13, weight: app.section == id ? .semibold : .regular))
-                .frame(maxWidth: .infinity, alignment: .leading).padding(.horizontal, 10).padding(.vertical, 11)
-                .background(app.section == id ? petAccent.opacity(0.13) : .clear, in: RoundedRectangle(cornerRadius: 9))
-        }.buttonStyle(.plain).accessibilityAddTraits(app.section == id ? .isSelected : [])
+            Label(title, systemImage: symbol).font(.system(size: 13, weight: app.section == id ? .semibold : .medium))
+                .frame(maxWidth: .infinity, alignment: .leading).padding(.horizontal, 11).padding(.vertical, 11)
+                .foregroundStyle(app.section == id ? petAccent : Color.primary)
+                .background(app.section == id ? petAccent.opacity(0.11) : .clear, in: RoundedRectangle(cornerRadius: 10))
+        }.buttonStyle(.plain).accessibilityAddTraits(app.section == id ? .isSelected : []).accessibilityRemoveTraits(app.section == id ? [] : .isSelected)
     }
 
+    private var filteredPets: [LibraryPet] {
+        app.entries.filter { search.isEmpty || $0.manifest.name.localizedStandardContains(search) || $0.manifest.description.localizedStandardContains(search) }
+    }
     private var libraryPage: some View {
         VStack(alignment: .leading, spacing: 22) {
-            HStack(alignment: .center) {
+            HStack(alignment: .center, spacing: 8) {
                 VStack(alignment: .leading, spacing: 5) {
-                    Text("Your pets").font(.system(size: 28, weight: .bold, design: .rounded))
-                    Text("Choose your company. Add something new.").foregroundStyle(.secondary)
+                    Text("A little company.").font(.system(size: 28, weight: .bold, design: .rounded))
+                    Text("Your favourite characters, close by.").font(.callout).foregroundStyle(PawletTheme.secondary)
                 }
-                Spacer()
-                Button { app.importPicker() } label: { Label("Import", systemImage: "square.and.arrow.down") }
-                Button { app.isCreating = true } label: { Label("Create", systemImage: "plus") }.buttonStyle(.borderedProminent).tint(petButtonAccent).foregroundStyle(.white)
+                Spacer(minLength: 12)
+                Button { app.revealLibrary() } label: { Label("Pets folder", systemImage: "folder") }.buttonStyle(PawletActionStyle())
+                    .accessibilityLabel("Open pets folder").help("Open the library folder containing all your pets")
+                Button { app.importPicker() } label: { Label("Import", systemImage: "square.and.arrow.down") }.buttonStyle(PawletActionStyle())
+                Button { app.isCreating = true } label: { Label("Create", systemImage: "plus") }.buttonStyle(PawletActionStyle(prominent: true))
             }
             if app.entries.isEmpty {
-                VStack(spacing: 14) {
+                VStack(spacing: 16) {
                     Image(systemName: "pawprint").font(.system(size: 44)).foregroundStyle(petAccent)
-                    Text("Make yourself some company.").font(.title2.weight(.semibold))
-                    Text("Import a pet pack, or create a character with Codex.").foregroundStyle(.secondary)
-                    Button("Import a pet") { app.importPicker() }.buttonStyle(.borderedProminent).tint(petButtonAccent).foregroundStyle(.white)
+                    Text("Who's keeping you company?").font(.title2.weight(.semibold))
+                    Text("Import a pet, or bring a new character to life.").foregroundStyle(PawletTheme.secondary)
+                    Button("Import your first pet") { app.importPicker() }.buttonStyle(PawletActionStyle(prominent: true))
                 }.frame(maxWidth: .infinity, maxHeight: .infinity)
             } else {
-                HStack(alignment: .top, spacing: 22) {
-                    ScrollView {
-                        LazyVGrid(columns: [GridItem(.adaptive(minimum: 145), spacing: 12)], spacing: 12) {
-                            ForEach(app.entries) { pet in petCard(pet) }
-                        }.padding(2)
+                HStack(alignment: .top, spacing: 20) {
+                    VStack(alignment: .leading, spacing: 15) {
+                        HStack {
+                            Text("Your companions").font(.system(size: 14, weight: .semibold))
+                            Text("\(app.entries.count)").font(.caption.monospacedDigit()).foregroundStyle(PawletTheme.secondary)
+                            Spacer()
+                        }
+                        HStack(spacing: 8) {
+                            Image(systemName: "magnifyingglass").foregroundStyle(PawletTheme.secondary).accessibilityHidden(true)
+                            TextField("Find a companion", text: $search).textFieldStyle(.plain).font(.callout).accessibilityLabel("Search companions")
+                            if !search.isEmpty {
+                                Button { search = "" } label: { Image(systemName: "xmark.circle.fill") }.buttonStyle(.borderless).accessibilityLabel("Clear search")
+                            }
+                        }.padding(10).background(PawletTheme.surface, in: RoundedRectangle(cornerRadius: 10))
+                            .overlay(RoundedRectangle(cornerRadius: 10).stroke(PawletTheme.border))
+                        ScrollView {
+                            if filteredPets.isEmpty {
+                                Text("No companions found.").font(.callout).foregroundStyle(PawletTheme.secondary).padding(.top, 40)
+                            } else {
+                                LazyVGrid(columns: [GridItem(.adaptive(minimum: 138), spacing: 12)], spacing: 12) {
+                                    ForEach(filteredPets) { pet in petCard(pet) }
+                                }.padding(2)
+                            }
+                        }
                     }.frame(maxWidth: .infinity)
-                    if let selected = app.selected { inspector(selected).frame(width: 260) }
+                    if let selected = app.selected {
+                        PetInspectorView(app: app, preview: app.preview, pet: selected,
+                            rename: { proposedName = selected.manifest.name; renaming = true }, remove: { removing = true }).frame(width: 388)
+                    }
                 }.frame(maxHeight: .infinity)
             }
             HStack {
-                Button("What is a pet pack?") { formatHelp = true }.buttonStyle(.link)
+                Button("Pet formats & sharing") { formatHelp = true }.buttonStyle(.link).font(.caption)
                 Spacer()
-                Text("Quiet by default").font(.caption).foregroundStyle(.secondary)
+                Label("Quiet by default", systemImage: "leaf").font(.caption).foregroundStyle(PawletTheme.secondary)
             }
-        }.padding(26)
+        }.padding(24)
     }
 
     private func petCard(_ pet: LibraryPet) -> some View {
-        Button { app.selectedID = pet.id } label: {
-            VStack(spacing: 8) {
-                Image(nsImage: app.image(for: pet.id)).resizable().interpolation(.high).scaledToFit()
-                    .frame(height: 136).padding(.top, 10)
-                HStack {
+        let selected = app.selectedID == pet.id
+        return Button { app.selectedID = pet.id } label: {
+            VStack(alignment: .leading, spacing: 0) {
+                ZStack(alignment: .topTrailing) {
+                    PawletTheme.stage.opacity(selected ? 1 : 0.5)
+                    Image(nsImage: app.image(for: pet.id)).resizable().interpolation(.high).scaledToFit().frame(height: 136).frame(maxWidth: .infinity).padding(.top, 8)
+                    if app.isVisible(pet.id) {
+                        Image(systemName: "checkmark.circle.fill").foregroundStyle(petAccent).padding(10).accessibilityLabel("On desktop")
+                    }
+                }.frame(height: 150).clipped()
+                VStack(alignment: .leading, spacing: 5) {
                     Text(pet.manifest.name).font(.system(size: 14, weight: .semibold, design: .rounded)).lineLimit(1)
-                    Spacer()
-                    if app.isVisible(pet.id) { Image(systemName: "checkmark.circle.fill").foregroundStyle(petAccent).accessibilityLabel("On desktop") }
-                }
-                Text(app.isVisible(pet.id) ? "On your desktop" : "In your library").font(.caption).foregroundStyle(.secondary)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-            }.padding(12).background(Color(nsColor: .controlBackgroundColor), in: RoundedRectangle(cornerRadius: 16))
-                .overlay(RoundedRectangle(cornerRadius: 16).stroke(app.selectedID == pet.id ? petAccent : Color.primary.opacity(0.08), lineWidth: app.selectedID == pet.id ? 2 : 1))
-        }.buttonStyle(.plain).accessibilityLabel("Select \(pet.manifest.name)")
-    }
-
-    private func inspector(_ pet: LibraryPet) -> some View {
-        VStack(alignment: .leading, spacing: 16) {
-            ZStack(alignment: .bottom) {
-                RoundedRectangle(cornerRadius: 18).fill(petAccent.opacity(0.08))
-                Capsule().fill(petAccent.opacity(0.12)).frame(width: 115, height: 4).padding(.bottom, 14)
-                Image(nsImage: app.image(for: pet.id)).resizable().scaledToFit().frame(width: 184, height: 200).padding(.bottom, 19)
-            }.frame(height: 235)
-            VStack(alignment: .leading, spacing: 5) {
-                Text(pet.manifest.name).font(.system(size: 24, weight: .bold, design: .rounded))
-                Text(pet.manifest.description).font(.callout).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
-            }
-            Toggle("Show on desktop", isOn: Binding(get: { app.isVisible(pet.id) }, set: { app.setPetVisible(pet.id, show: $0) }))
-                .toggleStyle(.switch)
-            HStack {
-                Label(app.isVisible(pet.id) ? (app.statuses[pet.id] ?? "Idle") : "Hidden", systemImage: "circle.dotted")
-                    .font(.caption).foregroundStyle(.secondary)
-                Spacer()
-                Button { app.perform(.idle, id: pet.id) } label: { Image(systemName: "arrow.counterclockwise") }
-                    .help("Return to idle")
-            }
-            HStack {
-                Button("Wave") { app.perform(.waving, id: pet.id) }
-                Button("Jump") { app.perform(.jumping, id: pet.id) }
-                Menu("More") {
-                    ForEach(PetState.allCases, id: \.rawValue) { state in Button(state.title) { app.perform(state, id: pet.id) } }
-                }
-            }
-            Divider()
-            HStack {
-                Menu {
-                    Button("Export pet pack…") { app.exportSelected() }
-                    Button("Export ZIP…") { app.exportSelected(asZIP: true) }
-                    Button("Export for Codex…") { app.exportSelectedForCodex() }
-                } label: { Label("Share", systemImage: "square.and.arrow.up") }
-                Button { app.revealSelected() } label: { Label("Open folder", systemImage: "folder") }
-                    .help("Open this pet's metadata and sprite sheet in Finder.")
-            }
-            HStack {
-                Menu {
-                    Button("Rename…") { proposedName = pet.manifest.name; renaming = true }
-                    Button("Move to Trash…", role: .destructive) { removing = true }
-                } label: { Image(systemName: "ellipsis") }.menuStyle(.borderlessButton).frame(width: 28).accessibilityLabel("Pet options")
-                Spacer()
-            }
-        }
+                    Text(app.isVisible(pet.id) ? "On your desktop" : "Ready to join you").font(.system(size: 11)).foregroundStyle(PawletTheme.secondary)
+                }.padding(13)
+            }.background(PawletTheme.surface).clipShape(RoundedRectangle(cornerRadius: 16))
+                .overlay(RoundedRectangle(cornerRadius: 16).stroke(selected ? petAccent : PawletTheme.border, lineWidth: selected ? 1.5 : 1))
+                .shadow(color: Color.black.opacity(selected ? 0.04 : 0), radius: 8, y: 3)
+        }.buttonStyle(.plain).accessibilityLabel("Select \(pet.manifest.name)").accessibilityAddTraits(selected ? .isSelected : []).accessibilityRemoveTraits(selected ? [] : .isSelected)
     }
 
     private var settingsPage: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("At your own pace").font(.system(size: 28, weight: .bold, design: .rounded))
-            Text("Keep them still, or invite a little movement.").foregroundStyle(.secondary)
+            Text("Make yourself at home.").font(.system(size: 28, weight: .bold, design: .rounded))
+            Text("Small companions. Just the way you like them.").foregroundStyle(PawletTheme.secondary)
             Form {
-                Section("Movement") {
+                Section("Hello & interactions") {
+                    Toggle("React when I hover", isOn: $app.settings.greetOnHover)
+                    Picker("Default hover reaction", selection: $app.settings.hoverReaction) {
+                        ForEach(HoverReaction.allCases, id: \.rawValue) { reaction in Text(reaction.title).tag(reaction) }
+                    }.disabled(!app.settings.greetOnHover)
+                    Text("Each pet can have its own reaction in the library. Hover plays once and always ignores the time between animations.").font(.caption).foregroundStyle(PawletTheme.secondary)
+                    Toggle("Animate clicks and drags", isOn: $app.settings.animateInteractions)
+                }
+                Section("Movement & rest") {
                     Toggle("Animate while idle", isOn: $app.settings.animateIdle)
                     Toggle("Follow the cursor", isOn: $app.settings.followCursor)
                     Toggle("Wander occasionally", isOn: $app.settings.wander)
@@ -186,9 +181,6 @@ struct LibraryView: View {
                         Text(app.settings.animationInterval == 0 ? "None" : "\(Int(app.settings.animationInterval)) s").monospacedDigit().frame(width: 45)
                     }
                     Text("Rest after each idle or activity loop. Zero plays continuously; clicks and greetings still respond immediately.").font(.caption).foregroundStyle(.secondary)
-                    Toggle("Say hello on hover", isOn: $app.settings.greetOnHover)
-                        .help("Wave each time the pointer enters. Leaving and returning can wave again immediately, independently of the animation interval.")
-                    Toggle("Animate clicks and drags", isOn: $app.settings.animateInteractions)
                     Toggle("Pause all animations", isOn: $app.settings.paused)
                     LabeledContent("Animation speed") { Slider(value: $app.settings.speed, in: 0.5...1.5); Text("\(Int(app.settings.speed * 100))%").monospacedDigit().frame(width: 45) }
                     Text("Idle movement is off by default. Your Mac's Reduce Motion setting always takes priority.").font(.caption).foregroundStyle(.secondary)
@@ -222,7 +214,7 @@ struct LibraryView: View {
             Text("The app works without Codex. Codex is only used when you choose to create new artwork.")
             Text("No accounts, telemetry or network listener. Imported pets are image and metadata files; they don't run code.").font(.callout).foregroundStyle(.secondary)
             Button("Learn about pet packs") { formatHelp = true }
-            Text("Version 0.4.1 · macOS 13+").font(.caption).foregroundStyle(.secondary)
+            Text("Version 0.5.0 · macOS 13+").font(.caption).foregroundStyle(.secondary)
             Spacer()
         }.padding(36).frame(maxWidth: .infinity, alignment: .leading)
     }
@@ -234,7 +226,7 @@ struct LibraryView: View {
             Text("manifest.json\nspritesheet.png").font(.system(.body, design: .monospaced)).padding(16)
                 .frame(maxWidth: .infinity, alignment: .leading).background(.quaternary, in: RoundedRectangle(cornerRadius: 10))
             Text("The JSON names the pet and its sprite format. The transparent PNG holds every pose in a fixed grid. Preview images are optional.")
-            Text("Import also accepts a Codex pet folder or ZIP with pet.json and its sprite sheet. Use Share → Export for Codex to save the same artwork in that format, or Open folder to browse this pet's files.").font(.callout)
+            Text("Import also accepts a Codex pet folder or ZIP with pet.json and its sprite sheet. Use Share → Export for Codex to save the same artwork in that format, or use the folder button at the top of the library to browse all your pets.").font(.callout)
             Text("v2: 1536 × 2288, 192 × 208 cells, 9 animations + 16 gaze poses.\nv1: 1536 × 1872, 9 animations without gaze tracking.").font(.callout).foregroundStyle(.secondary)
             Text("A regular photo is a creation reference, not an animated pet. Use Create to turn it into one.").font(.callout)
             HStack { Spacer(); Button("Got it") { formatHelp = false }.keyboardShortcut(.defaultAction) }

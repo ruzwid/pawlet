@@ -7,6 +7,7 @@ struct AppSettings: Codable, Equatable {
     var loopActivities = false
     var animateInteractions = true
     var greetOnHover = true
+    var hoverReaction = HoverReaction.wave
     var animationInterval = MotionConstants.DEFAULT_INTERVAL_SECONDS
     var paused = false
     var alwaysOnTop = true
@@ -28,6 +29,7 @@ struct AppSettings: Codable, Equatable {
         loopActivities = try values.decodeIfPresent(Bool.self, forKey: .loopActivities) ?? loopActivities
         animateInteractions = try values.decodeIfPresent(Bool.self, forKey: .animateInteractions) ?? animateInteractions
         greetOnHover = try values.decodeIfPresent(Bool.self, forKey: .greetOnHover) ?? greetOnHover
+        hoverReaction = (try values.decodeIfPresent(String.self, forKey: .hoverReaction)).flatMap(HoverReaction.init(rawValue:)) ?? .wave
         animationInterval = try values.decodeIfPresent(Double.self, forKey: .animationInterval) ?? animationInterval
         paused = try values.decodeIfPresent(Bool.self, forKey: .paused) ?? paused
         alwaysOnTop = try values.decodeIfPresent(Bool.self, forKey: .alwaysOnTop) ?? alwaysOnTop
@@ -46,6 +48,6 @@ struct AppSettings: Codable, Equatable {
 }
 
 enum AppSettingsKey: String, CodingKey {
-    case animateIdle, followCursor, wander, loopActivities, animateInteractions, greetOnHover, animationInterval
+    case animateIdle, followCursor, wander, loopActivities, animateInteractions, greetOnHover, hoverReaction, animationInterval
     case paused, alwaysOnTop, clickThrough, allSpaces, showDockIcon, size, speed, opacity, appearance
 }

@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.5.0
+
+- Refresh the native library, settings and creation sheet with a warm light/dark palette and a searchable companion collection.
+- Move Pets folder to the library toolbar and open the entire library; keep individual files in each pet’s options menu.
+- Add isolated animation previews with continuous looping, pause, speed, frame stepping and sixteen gaze poses where available.
+- Add global and per-pet hover choices, including Jump / Hop toward you, with immediate re-entry and a one-clip return to idle.
+- Keep gallery thumbnails still and pause preview playback for hidden windows, navigation and Reduce Motion.
+
 ## 0.4.1
 
 - Import Finder-created Codex ZIPs while ignoring __MACOSX and .DS_Store metadata.
