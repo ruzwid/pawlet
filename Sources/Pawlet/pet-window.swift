@@ -156,10 +156,10 @@ final class DesktopPet: NSObject {
         let pointerX = Int((mouse.x - panel.frame.minX) / CGFloat(owner.settings.size))
         let pointerTopY = 207 - Int((mouse.y - panel.frame.minY) / CGFloat(owner.settings.size))
         let isHovering = panel.frame.contains(mouse) && atlas.isOpaque(SpriteFrame(row: 0, column: 0), x: pointerX, topY: pointerTopY)
-        let shouldGreet = hoverGreeting.shouldGreet(isHovering: isHovering, now: now,
+        let shouldGreet = hoverGreeting.shouldGreet(isHovering: isHovering,
             isEnabled: owner.settings.greetOnHover,
-            isBlocked: owner.settings.paused || reduced || owner.settings.clickThrough || dragging || wanderTarget != nil || engine.action != nil || engine.baseState != .idle,
-            cooldown: owner.settings.animationInterval)
+            isBlocked: owner.settings.paused || reduced || owner.settings.clickThrough || dragging || wanderTarget != nil ||
+                (engine.action != nil && engine.action != .waving) || engine.baseState != .idle)
         if shouldGreet { engine.perform(.waving, now: now, speed: owner.settings.speed) }
         if hypot(mouse.x - lastPointer.x, mouse.y - lastPointer.y) > 1 {
             lastPointer = mouse; pointerActiveUntil = now + 1.3

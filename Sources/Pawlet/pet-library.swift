@@ -107,6 +107,12 @@ final class PetLibrary {
     }
 
     func importFile(_ url: URL) throws -> LibraryPet {
+        let values = try url.resourceValues(forKeys: [.isDirectoryKey, .isSymbolicLinkKey])
+        guard values.isSymbolicLink != true else { throw PetLibraryError.invalid("Choose a pet file or folder, rather than a symbolic link.") }
+        if values.isDirectory == true { return try importFolder(url) }
+        if url.lastPathComponent == "pet.json" || url.lastPathComponent == "manifest.json" {
+            return try importFolder(url.deletingLastPathComponent())
+        }
         if url.pathExtension.lowercased() == "png" {
             let directory = fileManager.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)
             try fileManager.createDirectory(at: directory, withIntermediateDirectories: true)
@@ -120,7 +126,17 @@ final class PetLibrary {
         }
         let temporary = try PetArchive.unpack(url)
         defer { try? fileManager.removeItem(at: temporary) }
-        return try install(temporary)
+        return try importFolder(temporary, fallbackID: url.deletingPathExtension().lastPathComponent)
+    }
+
+    func importFolder(_ directory: URL, fallbackID: String? = nil) throws -> LibraryPet {
+        if fileManager.fileExists(atPath: directory.appendingPathComponent("manifest.json").path) { return try install(directory) }
+        guard fileManager.fileExists(atPath: directory.appendingPathComponent("pet.json").path) else {
+            throw PetLibraryError.invalid("Choose the pet's own folder containing manifest.json or pet.json beside its sprite sheet. You can also import a complete spritesheet.png directly.")
+        }
+        let snapshot = try CodexPetTransfer.prepareFolder(directory, fallbackID: fallbackID ?? directory.lastPathComponent)
+        defer { try? fileManager.removeItem(at: snapshot) }
+        return try install(snapshot)
     }
 
     func rename(_ pet: LibraryPet, to name: String) throws {
@@ -134,52 +150,85 @@ final class PetLibrary {
     }
 }
 
-/// Only the two required data files and an optional preview are accepted. No archive extraction runs.
 enum PetArchive {
-    struct Entry { let name: String; let size: Int }
+    struct Entry {
+        let path: String
+        let size: Int
+        var name: String { path.split(separator: "/").last.map(String.init) ?? path }
+    }
     static let allowed = Set(["manifest.json", "spritesheet.png", "preview.png"])
+    static let compatibleAllowed = allowed.union(["pet.json", "spritesheet.webp", "README.md"])
 
-    static func inspect(_ data: Data) throws -> [Entry] {
-        guard data.count >= 22, data.count <= 25 * 1024 * 1024 else { throw PetLibraryError.invalid("Pet packs must be ZIP files under 25 MB.") }
+    static func inspect(_ data: Data, allowCodex: Bool = false) throws -> [Entry] {
+        guard data.count >= 22, data.count <= TransferConstants.MAX_ARCHIVE_BYTES else { throw PetLibraryError.invalid("Pet packs must be ZIP files under 25 MB.") }
         func u16(_ offset: Int) -> Int { Int(data[offset]) | Int(data[offset + 1]) << 8 }
         func u32(_ offset: Int) -> UInt32 { UInt32(data[offset]) | UInt32(data[offset + 1]) << 8 | UInt32(data[offset + 2]) << 16 | UInt32(data[offset + 3]) << 24 }
         var end: Int?
         for index in stride(from: data.count - 22, through: max(0, data.count - 65_557), by: -1) {
             if u32(index) == 0x06054b50, index + 22 + u16(index + 20) == data.count { end = index; break }
         }
+        let entryRange = allowCodex ? 2...7 : 2...3
         guard let end = end, u16(end + 4) == 0, u16(end + 6) == 0,
-              u16(end + 8) == u16(end + 10), (2...3).contains(u16(end + 10)) else { throw PetLibraryError.invalid("Use a flat .petpack containing manifest.json and spritesheet.png, with an optional preview.png.") }
+              u16(end + 8) == u16(end + 10), entryRange.contains(u16(end + 10)) else {
+            throw PetLibraryError.invalid("Choose a .petpack, or a ZIP containing one pet folder with metadata and its sprite sheet.")
+        }
         let centralStart = Int(u32(end + 16)), centralSize = Int(u32(end + 12))
         guard centralStart >= 0, centralStart + centralSize == end else { throw PetLibraryError.invalid("Invalid ZIP directory.") }
-        var offset = centralStart, entries: [Entry] = [], seen = Set<String>()
+        var offset = centralStart, entries: [Entry] = [], seen = Set<String>(), prefixes = Set<String>(), seenPaths = Set<String>()
+        let folderCharacters = CharacterSet(charactersIn: "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-_ ")
         for _ in 0..<u16(end + 10) {
             guard offset + 46 <= end, u32(offset) == 0x02014b50 else { throw PetLibraryError.invalid("Invalid ZIP entry.") }
             let nameSize = u16(offset + 28), extraSize = u16(offset + 30), commentSize = u16(offset + 32)
             let next = offset + 46 + nameSize + extraSize + commentSize
-            guard next <= end, let name = String(data: data[(offset + 46)..<(offset + 46 + nameSize)], encoding: .utf8),
-                  allowed.contains(name), seen.insert(name).inserted, u16(offset + 34) == 0,
-                  u16(offset + 8) & 1 == 0, [0, 8].contains(u16(offset + 10)),
-                  (u32(offset + 38) >> 16) & 0o170000 != 0o120000 else {
-                throw PetLibraryError.invalid("Pet packs may contain only plain manifest.json, spritesheet.png and preview.png files. Nested paths, duplicates, links and encryption are not supported.")
+            guard next <= end, let path = String(data: data[(offset + 46)..<(offset + 46 + nameSize)], encoding: .utf8),
+                  seenPaths.insert(path).inserted, u16(offset + 34) == 0,
+                  u16(offset + 8) & 1 == 0, [0, 8].contains(u16(offset + 10)) else {
+                throw PetLibraryError.invalid("Duplicate paths, encryption and unsupported ZIP entries are not accepted.")
             }
-            let size = Int(u32(offset + 24)), maxSize = name == "manifest.json" ? 65_536 : 20 * 1024 * 1024
-            guard size > 0, size <= maxSize else { throw PetLibraryError.invalid("A pet-pack file exceeds the size limit.") }
-            entries.append(Entry(name: name, size: size)); offset = next
+            let components = path.split(separator: "/", omittingEmptySubsequences: false).map(String.init)
+            let isDirectory = path.hasSuffix("/")
+            let hasFolder = components.count == 2
+            guard components.count == 1 || (allowCodex && hasFolder),
+                  !hasFolder || (!components[0].isEmpty && components[0].unicodeScalars.allSatisfy { folderCharacters.contains($0) }),
+                  !isDirectory || (allowCodex && hasFolder) else {
+                throw PetLibraryError.invalid("ZIPs may contain one flat pet or one pet folder. Nested paths and multiple pets are not supported.")
+            }
+            let mode = (u32(offset + 38) >> 16) & 0o170000
+            guard mode == 0 || mode == (isDirectory ? 0o040000 : 0o100000) else { throw PetLibraryError.invalid("Archive links and special files are not supported.") }
+            let size = Int(u32(offset + 24))
+            if isDirectory {
+                guard size == 0 else { throw PetLibraryError.invalid("Invalid ZIP folder entry.") }
+            } else {
+                let name = components.last!
+                guard (allowCodex ? compatibleAllowed : allowed).contains(name), seen.insert(name).inserted else {
+                    throw PetLibraryError.invalid("Choose a pet ZIP containing only metadata, a sprite sheet and optional preview/README. Source and QA bundles are not pet packs.")
+                }
+                let maximumSize = ["manifest.json", "pet.json", "README.md"].contains(name) ? TransferConstants.MAX_METADATA_BYTES : TransferConstants.MAX_IMAGE_BYTES
+                guard (size > 0 || name == "README.md"), size <= maximumSize else { throw PetLibraryError.invalid("A pet-pack file exceeds the size limit.") }
+                prefixes.insert(hasFolder ? components[0] : "")
+                entries.append(Entry(path: path, size: size))
+            }
+            offset = next
         }
-        guard offset == end, seen.contains("manifest.json"), seen.contains("spritesheet.png") else { throw PetLibraryError.invalid("Missing manifest.json or spritesheet.png.") }
+        let hasManifest = seen.contains("manifest.json") && seen.contains("spritesheet.png")
+        let hasCodexPet = allowCodex && seen.contains("pet.json") && (seen.contains("spritesheet.png") || seen.contains("spritesheet.webp"))
+        guard offset == end, prefixes.count == 1, hasManifest || hasCodexPet,
+              !(seen.contains("spritesheet.png") && seen.contains("spritesheet.webp")) else {
+            throw PetLibraryError.invalid("The ZIP must contain one pet's metadata and one sprite sheet.")
+        }
         return entries
     }
 
     static func unpack(_ url: URL) throws -> URL {
         guard (try url.resourceValues(forKeys: [.fileSizeKey]).fileSize ?? 0) <= 25 * 1024 * 1024 else { throw PetLibraryError.invalid("The pet pack exceeds 25 MB.") }
-        let entries = try inspect(Data(contentsOf: url))
+        let entries = try inspect(Data(contentsOf: url), allowCodex: url.pathExtension.lowercased() == "zip")
         let folder = FileManager.default.temporaryDirectory.appendingPathComponent("pet-import-" + UUID().uuidString, isDirectory: true)
         try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
         do {
             for entry in entries {
                 let process = Process(), pipe = Pipe()
                 process.executableURL = URL(fileURLWithPath: "/usr/bin/unzip")
-                process.arguments = ["-p", url.path, entry.name]
+                process.arguments = ["-p", url.path, entry.path]
                 process.standardOutput = pipe; process.standardError = FileHandle.nullDevice
                 try process.run()
                 DispatchQueue.global().asyncAfter(deadline: .now() + 10) { if process.isRunning { process.terminate() } }
@@ -193,6 +242,15 @@ enum PetArchive {
                 process.waitUntilExit()
                 guard process.terminationStatus == 0, content.count == entry.size else { throw PetLibraryError.invalid("The pet pack is damaged or couldn't be read.") }
                 try content.write(to: folder.appendingPathComponent(entry.name))
+            }
+            let metadataURL = folder.appendingPathComponent("pet.json")
+            if FileManager.default.fileExists(atPath: metadataURL.path) {
+                var metadata = try JSONDecoder().decode(CodexPetMetadata.self, from: Data(contentsOf: metadataURL))
+                if metadata.id == nil {
+                    let wrappedFolder = entries.first?.path.split(separator: "/").dropLast().first.map(String.init)
+                    metadata.id = CodexPetTransfer.localID(from: wrappedFolder ?? url.deletingPathExtension().lastPathComponent)
+                    try JSONEncoder().encode(metadata).write(to: metadataURL)
+                }
             }
             return folder
         } catch { try? FileManager.default.removeItem(at: folder); throw error }

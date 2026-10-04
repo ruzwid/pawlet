@@ -10,7 +10,7 @@ mkdir -p "$task_app/Contents/MacOS" "$task_app/Contents/Resources" "$task_tempor
 for task_arch in ${ARCHS:-arm64 x86_64}; do
     xcrun swiftc -O -swift-version 5 -target "$task_arch-apple-macosx13.0" \
         -sdk "$task_sdk" -module-cache-path "$task_temporary/module-cache" \
-        "$task_root"/Sources/Pawlet/*.swift "$task_root/Tests/project-tests.swift" \
+        "$task_root"/Sources/Pawlet/*.swift "$task_root"/Tests/*.swift \
         -o "$task_temporary/Pawlet-$task_arch"
 done
 task_binaries=("$task_temporary"/Pawlet-*)
@@ -22,7 +22,9 @@ fi
 cp "$task_root/Resources/Info.plist" "$task_app/Contents/Info.plist"
 cp "$task_root/LICENSE" "$task_app/Contents/Resources/LICENSE.txt"
 ditto "$task_root/Resources/Pets" "$task_app/Contents/Resources/Pets"
+rm -rf "$task_app/Contents/Resources/CreationSkill"
 ditto "$task_root/.agents/skills/create-desktop-pet" "$task_app/Contents/Resources/CreationSkill"
+find "$task_app/Contents/Resources/CreationSkill" -type d -name __pycache__ -prune -exec rm -rf {} +
 if [[ -f "$task_root/Resources/AppIcon.icns" ]]; then cp "$task_root/Resources/AppIcon.icns" "$task_app/Contents/Resources/"; fi
 cp "$task_root/Resources/PawMark.png" "$task_app/Contents/Resources/"
 chmod +x "$task_app/Contents/MacOS/Pawlet"

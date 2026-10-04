@@ -64,18 +64,21 @@ enum ProjectTests {
         try require(intervalEngine.frame(now: 73, speed: 0.5, animationInterval: 10).column == 0, "Rest duration must not scale with playback speed")
         try require(intervalEngine.frame(now: 73.94, speed: 0.5, animationInterval: 10).column == 1, "Slow playback must resume after the same real-time interval")
         var greeting = HoverGreeting()
-        try require(greeting.shouldGreet(isHovering: true, now: 100, isEnabled: true, isBlocked: false, cooldown: 10), "Hover entry must greet")
-        try require(!greeting.shouldGreet(isHovering: true, now: 120, isEnabled: true, isBlocked: false, cooldown: 10), "Stationary pointer must not repeat greeting")
-        _ = greeting.shouldGreet(isHovering: false, now: 121, isEnabled: true, isBlocked: false, cooldown: 10)
-        try require(greeting.shouldGreet(isHovering: true, now: 122, isEnabled: true, isBlocked: false, cooldown: 10), "Re-entry should greet after cooldown")
-        _ = greeting.shouldGreet(isHovering: false, now: 123, isEnabled: true, isBlocked: false, cooldown: 10)
-        try require(!greeting.shouldGreet(isHovering: true, now: 124, isEnabled: true, isBlocked: false, cooldown: 10), "Repeated crossings must be throttled")
-        _ = greeting.shouldGreet(isHovering: false, now: 140, isEnabled: true, isBlocked: false, cooldown: 10)
-        try require(!greeting.shouldGreet(isHovering: true, now: 141, isEnabled: true, isBlocked: true, cooldown: 10), "Pause and Reduce Motion must block greeting")
+        try require(greeting.shouldGreet(isHovering: true, isEnabled: true, isBlocked: false), "Hover entry must greet")
+        try require(!greeting.shouldGreet(isHovering: true, isEnabled: true, isBlocked: false), "Stationary pointer must not repeat greeting")
+        _ = greeting.shouldGreet(isHovering: false, isEnabled: true, isBlocked: false)
+        try require(greeting.shouldGreet(isHovering: true, isEnabled: true, isBlocked: false), "Re-entry must greet without a cooldown")
+        _ = greeting.shouldGreet(isHovering: false, isEnabled: true, isBlocked: false)
+        try require(!greeting.shouldGreet(isHovering: true, isEnabled: true, isBlocked: true), "Pause and Reduce Motion must block greeting")
+        try require(!greeting.shouldGreet(isHovering: true, isEnabled: true, isBlocked: false), "Unblocking under a stationary pointer must not greet")
         var disabledGreeting = HoverGreeting()
-        try require(!disabledGreeting.shouldGreet(isHovering: true, now: 1, isEnabled: false, isBlocked: false, cooldown: 10), "Disabled hover must stay still")
+        try require(!disabledGreeting.shouldGreet(isHovering: true, isEnabled: false, isBlocked: false), "Disabled hover must stay still")
         let previousSettings = try JSONDecoder().decode(AppSettings.self, from: Data(#"{"animateIdle":true,"size":1.25,"followCursor":false}"#.utf8))
         try require(previousSettings.animateIdle && previousSettings.size == 1.25 && previousSettings.animationInterval == 10 && previousSettings.greetOnHover, "Settings upgrade must preserve prior choices and add new defaults")
+        let smallSettings = try JSONDecoder().decode(AppSettings.self, from: Data(#"{"size":0.25}"#.utf8))
+        try require(smallSettings.size == 0.25, "25 percent size must survive persistence")
+        let outOfRangeSettings = try JSONDecoder().decode(AppSettings.self, from: Data(#"{"size":0.1}"#.utf8))
+        try require(outOfRangeSettings.size == MotionConstants.MIN_PET_SCALE, "Pet size must clamp at 25 percent")
         try require(engine.frame(now: 300, drag: .runningRight, paused: true).column == 0, "Paused drag")
         try require(engine.frame(now: 301, gaze: SpriteFrame(row: 10, column: 4), reducedMotion: true).row == 0, "Reduced motion")
         let pack = scratch.appendingPathComponent("roundtrip.petpack")
@@ -120,12 +123,13 @@ enum ProjectTests {
             resources: resources, workspaces: scratch.appendingPathComponent("workspaces"))
         try require(automaticStyle.prompt.contains("Choose a cohesive, cute visual style") && !automaticStyle.prompt.contains("Use the requested visual style"), "Choose for me must delegate a consistent style choice")
         try require(handoff.prompt.contains("Use the requested visual style: plush"), "Explicit style must be preserved")
+        try TransferTests.run(sample: original, scratch: scratch)
         let report: [String: Any] = ["ok": true, "checks": ["exact sample hash", "73 populated cells", "transparent hit zones",
             "all nine animation clocks", "sixteen cursor directions", "calm idle", "non-looping activities", "speed-aware transient lifetime",
             "pause and reduced motion", "pet-pack roundtrip preserves bytes", "arbitrary third pet", "rename persistence",
             "duplicate import rejected", "path traversal rejected", "truncated archive rejected", "schema validation",
             "dynamic command targets", "Codex prompt encoding", "creation skill bundled", "idle and activity rest intervals",
-            "zero interval and playback speed", "hover entry and cooldown", "blocked and disabled hover", "settings upgrade", "automatic and explicit artwork styles"]]
+            "zero interval and playback speed", "immediate hover re-entry", "blocked and disabled hover", "settings upgrade", "25 percent size persistence", "automatic and explicit artwork styles", "Codex folder and ZIP imports", "Codex export roundtrip", "unsafe Codex transfers rejected"]]
         print(String(data: try JSONSerialization.data(withJSONObject: report, options: [.prettyPrinted, .sortedKeys]), encoding: .utf8)!)
     }
 }

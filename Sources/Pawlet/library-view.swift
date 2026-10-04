@@ -153,7 +153,15 @@ struct LibraryView: View {
             }
             Divider()
             HStack {
-                Button { app.exportSelected() } label: { Label("Share", systemImage: "square.and.arrow.up") }
+                Menu {
+                    Button("Export pet pack…") { app.exportSelected() }
+                    Button("Export ZIP…") { app.exportSelected(asZIP: true) }
+                    Button("Export for Codex…") { app.exportSelectedForCodex() }
+                } label: { Label("Share", systemImage: "square.and.arrow.up") }
+                Button { app.revealSelected() } label: { Label("Open folder", systemImage: "folder") }
+                    .help("Open this pet's metadata and sprite sheet in Finder.")
+            }
+            HStack {
                 Menu {
                     Button("Rename…") { proposedName = pet.manifest.name; renaming = true }
                     Button("Move to Trash…", role: .destructive) { removing = true }
@@ -179,14 +187,14 @@ struct LibraryView: View {
                     }
                     Text("Rest after each idle or activity loop. Zero plays continuously; clicks and greetings still respond immediately.").font(.caption).foregroundStyle(.secondary)
                     Toggle("Say hello on hover", isOn: $app.settings.greetOnHover)
-                        .help("One short wave when the pointer enters the pet, with a cooldown between greetings.")
+                        .help("Wave each time the pointer enters. Leaving and returning can wave again immediately, independently of the animation interval.")
                     Toggle("Animate clicks and drags", isOn: $app.settings.animateInteractions)
                     Toggle("Pause all animations", isOn: $app.settings.paused)
                     LabeledContent("Animation speed") { Slider(value: $app.settings.speed, in: 0.5...1.5); Text("\(Int(app.settings.speed * 100))%").monospacedDigit().frame(width: 45) }
                     Text("Idle movement is off by default. Your Mac's Reduce Motion setting always takes priority.").font(.caption).foregroundStyle(.secondary)
                 }
                 Section("On your desktop") {
-                    LabeledContent("Pet size") { Slider(value: $app.settings.size, in: 0.65...1.75); Text("\(Int(app.settings.size * 100))%").monospacedDigit().frame(width: 45) }
+                    LabeledContent("Pet size") { Slider(value: $app.settings.size, in: MotionConstants.MIN_PET_SCALE...MotionConstants.MAX_PET_SCALE, step: 0.01); Text("\(Int((app.settings.size * 100).rounded()))%").monospacedDigit().frame(width: 45) }
                     LabeledContent("Opacity") { Slider(value: $app.settings.opacity, in: 0.3...1); Text("\(Int(app.settings.opacity * 100))%").monospacedDigit().frame(width: 45) }
                     Toggle("Stay above other windows", isOn: $app.settings.alwaysOnTop)
                     Toggle("Show on all desktop Spaces", isOn: $app.settings.allSpaces)
@@ -214,7 +222,7 @@ struct LibraryView: View {
             Text("The app works without Codex. Codex is only used when you choose to create new artwork.")
             Text("No accounts, telemetry or network listener. Imported pets are image and metadata files; they don't run code.").font(.callout).foregroundStyle(.secondary)
             Button("Learn about pet packs") { formatHelp = true }
-            Text("Version 0.3.0 · macOS 13+").font(.caption).foregroundStyle(.secondary)
+            Text("Version 0.4.0 · macOS 13+").font(.caption).foregroundStyle(.secondary)
             Spacer()
         }.padding(36).frame(maxWidth: .infinity, alignment: .leading)
     }
@@ -226,6 +234,7 @@ struct LibraryView: View {
             Text("manifest.json\nspritesheet.png").font(.system(.body, design: .monospaced)).padding(16)
                 .frame(maxWidth: .infinity, alignment: .leading).background(.quaternary, in: RoundedRectangle(cornerRadius: 10))
             Text("The JSON names the pet and its sprite format. The transparent PNG holds every pose in a fixed grid. Preview images are optional.")
+            Text("Import also accepts a Codex pet folder or ZIP with pet.json and its sprite sheet. Use Share → Export for Codex to save the same artwork in that format, or Open folder to browse this pet's files.").font(.callout)
             Text("v2: 1536 × 2288, 192 × 208 cells, 9 animations + 16 gaze poses.\nv1: 1536 × 1872, 9 animations without gaze tracking.").font(.callout).foregroundStyle(.secondary)
             Text("A regular photo is a creation reference, not an animated pet. Use Create to turn it into one.").font(.callout)
             HStack { Spacer(); Button("Got it") { formatHelp = false }.keyboardShortcut(.defaultAction) }

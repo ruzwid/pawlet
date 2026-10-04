@@ -39,7 +39,8 @@ struct AppSettings: Codable, Equatable {
         opacity = try values.decodeIfPresent(Double.self, forKey: .opacity) ?? opacity
         appearance = try values.decodeIfPresent(String.self, forKey: .appearance) ?? appearance
         animationInterval = min(MotionConstants.MAX_INTERVAL_SECONDS, max(0, animationInterval))
-        size = min(1.75, max(0.65, size)); speed = min(1.5, max(0.5, speed)); opacity = min(1, max(0.3, opacity))
+        size = min(MotionConstants.MAX_PET_SCALE, max(MotionConstants.MIN_PET_SCALE, size))
+        speed = min(1.5, max(0.5, speed)); opacity = min(1, max(0.3, opacity))
         if !["system", "light", "dark"].contains(appearance) { appearance = "system" }
     }
 }

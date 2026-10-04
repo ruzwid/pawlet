@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.4.0
+
+- Remove hover cooldowns: each pointer re-entry can wave independently of loop intervals.
+- Allow 25–175% pet size, including persisted settings and native panel resizing.
+- Add Open folder beside each pet and reveal exported packs in Finder.
+- Import Codex pet folders, pet.json and flat/wrapped share ZIPs with names and IDs intact.
+- Export Codex folders and ordinary ZIPs alongside existing .petpack support.
+- Preserve PNG bytes and decode compatible WebP sprite sheets to PNG on import.
+- Document clone/build setup and two-way local desktop pet transfers without Apple Developer credentials.
+
 ## 0.3.0 — Pawlet
 
 - Rename the native app, bundle identifier, local storage and executable to Pawlet.

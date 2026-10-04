@@ -34,3 +34,9 @@ The PNG must be under 20 MiB with transparent unused cells. Packs must be under 
 v2 is 1536 × 2288, 73 poses, 15 unused transparent cells. Gaze begins at **up**, then advances clockwise every 22.5° in screen coordinates. The cardinals are up, screen-right, down, screen-left. Keep the body anchored while gaze changes.
 
 v1 is 1536 × 1872, rows 0–8 only, 57 poses and the same 15 unused transparent cells. Set `spriteVersion` to 1. It has no gaze tracking.
+
+## Codex desktop transfer
+
+Pawlet also imports a Codex pet folder or ZIP with `pet.json` and `spritesheet.png`/`spritesheet.webp`. Codex fields are `id` (optional), `displayName` (optional), `description`, `spriteVersionNumber` (1 or 2), and `spritesheetPath` (one of those two image filenames). Absent sprite version defaults to 1. Folder imports use the folder name as the missing identity fallback. Metadata and PNG artwork are preserved; WebP artwork is decoded to the internal PNG format.
+
+Share → Export for Codex saves `pet.json`, `spritesheet.png` and the Pawlet manifest together. Save under `~/.codex/pets/` for local desktop selection. This is separate from ChatGPT Work web upload. It requires no artwork regeneration or hosted pet creation. A compatible ZIP may wrap one pet in one folder and include README.md; canonical .petpack files stay flat with the original schema above.

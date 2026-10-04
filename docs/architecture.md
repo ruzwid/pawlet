@@ -5,6 +5,7 @@ The app keeps artwork, behavior and creation separate. Adding a character uses t
 | Component | Responsibility |
 | --- | --- |
 | `pet-library.swift` | Manifest validation, stable IDs, atomic imports, bounded ZIP parsing and lossless export |
+| `codex-pet-transfer.swift` | Local Codex metadata conversion, optional WebP decoding, verified folder export |
 | `atlas.swift` | PNG validation, SHA-256, fixed-grid frame cache, alpha-aware mouse hit zones |
 | `engine.swift` | Nine states, one-shot actions, still idle, settled activities and sixteen gaze directions |
 | `pet-window.swift` | Transparent AppKit panel, dragging, pointer gaze, optional wandering and screen bounds |
@@ -15,6 +16,8 @@ The app keeps artwork, behavior and creation separate. Adding a character uses t
 
 ## Storage and lifetime
 
+Codex pet folders/ZIPs are normalized into a validated library snapshot. Only known data files are read; README contents are never executed. PNGs are preserved exactly; WebP imports are decoded into the internal PNG format. A compatible ZIP has a single optional folder prefix; traversal, duplicate basenames, links and encrypted entries are rejected before bounded streaming. Canonical `.petpack` exports retain their original flat schema.
+
 Library folders live in `~/Library/Application Support/Pawlet/Library/<id>/`. Each stores `manifest.json` and the original `spritesheet.png`. Preferences, visibility and screen positions use UserDefaults under the app's bundle ID. Creation workspaces live separately beside the Library folder; deleting a runtime pet does not erase its generation sources.
 
 Only visible pets load complete atlases; hiding a pet releases its window and frame cache. Thumbnails are copied from the first cell without retaining the entire atlas. Up to six pets can be active. A shared 30 Hz timer polls local pointer position and advances visible behavior; frames redraw only when their selected cell changes. The timer stops during system sleep and resumes on wake. Stored pets need no active process.
@@ -23,7 +26,7 @@ Only visible pets load complete atlases; hiding a pet releases its window and fr
 
 State commands select idle, directional running, wave, jump, failed, waiting, working or review. Waves and jumps return to the previous activity. Other activities play once and settle unless activity looping is enabled. Idle animation, wandering and pointer gaze are independent settings. User click/drag animations can be disabled without disabling other chosen motion. System Reduce Motion and the global Pause setting take priority. No automatic Codex activity monitoring is included; integrations can explicitly send state URLs.
 
-Repeating idle/activity clips play once, then rest for the configured real-time interval. Idle rests at its neutral first pose; other activities hold their last pose. Playback speed changes the clip duration, not the rest duration. Dragging and direct greetings are immediate. Hover hit testing uses the neutral pose so an animated hand cannot create repeated artificial entries. The greeting gate requires pointer entry, a completed cooldown and idle state; it also respects Pause, Reduce Motion and click-through.
+Repeating idle/activity clips play once, then rest for the configured real-time interval. Idle rests at its neutral first pose; other activities hold their last pose. Playback speed changes the clip duration, not the rest duration. Dragging and direct greetings are immediate. Hover hit testing uses the neutral pose so an animated hand cannot create repeated artificial entries. The greeting gate requires pointer entry and idle state; loop intervals never gate greetings. Re-entry may restart an existing wave, while a stationary pointer never repeats. The gate also respects Pause, Reduce Motion and click-through.
 
 ```text
 pawlet://controls

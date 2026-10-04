@@ -155,8 +155,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject {
     }
 
     func importPicker() {
-        let panel = NSOpenPanel(); panel.title = "Add a pet"; panel.message = "Choose a .petpack or a complete PNG sprite sheet."
-        panel.allowedContentTypes = [UTType(filenameExtension: "petpack") ?? .data, .png, .zip]
+        let panel = NSOpenPanel(); panel.title = "Add a pet"; panel.message = "Choose a pet pack, Codex pet ZIP/folder, pet.json, or complete PNG sprite sheet."
+        panel.allowedContentTypes = [UTType(filenameExtension: "petpack") ?? .data, .png, .zip, .json]
+        panel.canChooseDirectories = true
         panel.allowsMultipleSelection = false
         if panel.runModal() == .OK, let url = panel.url { importPet(url) }
     }
@@ -165,13 +166,28 @@ final class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject {
         do { let pet = try library.importFile(url); reloadLibrary(); selectedID = pet.id; section = "library"; setPetVisible(pet.id, show: true) }
         catch { message = error.localizedDescription }
     }
-    func exportSelected() {
+    func exportSelected(asZIP: Bool = false) {
         guard let selected = selected else { return }
         let panel = NSSavePanel(); panel.title = "Share \(selected.manifest.name)"
-        panel.nameFieldStringValue = selected.manifest.name + ".petpack"
-        panel.allowedContentTypes = [UTType(filenameExtension: "petpack") ?? .data]
+        panel.nameFieldStringValue = selected.manifest.name + (asZIP ? ".zip" : ".petpack")
+        panel.allowedContentTypes = [asZIP ? .zip : (UTType(filenameExtension: "petpack") ?? .data)]
         if panel.runModal() == .OK, let url = panel.url {
-            do { try PetArchive.export(selected, to: url) } catch { message = error.localizedDescription }
+            do { try PetArchive.export(selected, to: url); NSWorkspace.shared.activateFileViewerSelecting([url]) }
+            catch { message = error.localizedDescription }
+        }
+    }
+    func exportSelectedForCodex() {
+        guard let selected = selected else { return }
+        let panel = NSSavePanel(); panel.title = "Export \(selected.manifest.name) for Codex"
+        panel.nameFieldStringValue = selected.id
+        panel.directoryURL = FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent(".codex/pets", isDirectory: true)
+        panel.message = "Save this pet folder in Codex's pets folder (~/.codex/pets), or choose another location to share it. Existing folders are kept intact."
+        if panel.runModal() == .OK, let url = panel.url {
+            do {
+                try CodexPetTransfer.export(selected, to: url)
+                NSWorkspace.shared.activateFileViewerSelecting([url])
+                message = "Codex folder saved. Open Codex → Settings → Pets and refresh or restart to choose \(selected.manifest.name)."
+            } catch { message = error.localizedDescription }
         }
     }
     func renameSelected(_ name: String) {
@@ -192,6 +208,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject {
         } catch { message = error.localizedDescription }
     }
     func revealLibrary() { NSWorkspace.shared.open(library.root) }
+    func revealSelected() {
+        guard let selected = selected else { return }
+        NSWorkspace.shared.open(selected.directory)
+    }
     @objc func resetPositions() { for (index, pet) in pets.enumerated() { pet.resetPosition(index: index) } }
 
     func item(_ title: String, action: Selector, object: String? = nil, checked: Bool? = nil, key: String = "") -> NSMenuItem {
@@ -271,6 +291,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject {
                 _ = try SpriteAtlas(manifest: try self.library.readManifest(unpacked), directory: unpacked)
                 self.settings.size = 1.25
                 guard abs(pet.panel.frame.width - 240) < 0.01 else { throw PetLibraryError.invalid("Size control") }
+                self.settings.size = 0.25
+                guard abs(pet.panel.frame.width - 48) < 0.01 && abs(pet.panel.frame.height - 52) < 0.01 else { throw PetLibraryError.invalid("25 percent size control") }
                 self.settings.size = 1
                 self.handleURL(URL(string: "pawlet://state?pet=\(entry.id)&state=waiting&seconds=5")!)
                 guard pet.engine.action == .waiting else { throw PetLibraryError.invalid("Dynamic pet command") }
@@ -284,6 +306,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject {
                 }
                 pet.tick(now + 2, mouseLocation: overPet)
                 guard pet.engine.action == nil else { throw PetLibraryError.invalid("Stationary hover repeated") }
+                self.settings.animationInterval = 60
+                pet.tick(now + 2.01, mouseLocation: outsidePet)
+                pet.tick(now + 2.02, mouseLocation: overPet)
+                if !NSWorkspace.shared.accessibilityDisplayShouldReduceMotion {
+                    guard pet.engine.action == .waving else { throw PetLibraryError.invalid("Loop interval blocked hover re-entry") }
+                    pet.tick(now + 2.03, mouseLocation: outsidePet)
+                    pet.tick(now + 2.04, mouseLocation: overPet)
+                    guard pet.engine.action == .waving else { throw PetLibraryError.invalid("Rapid hover re-entry didn't restart wave") }
+                }
+                self.settings.animationInterval = MotionConstants.DEFAULT_INTERVAL_SECONDS
                 pet.engine.reset()
                 self.settings.paused = true
                 pet.tick(now + 12, mouseLocation: outsidePet)
@@ -301,7 +333,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject {
                 let report: [String: Any] = ["ok": true, "calm_idle_stays_still": true, "pack_export_import": true,
                     "dynamic_pet_url": true, "native_window_and_size": true, "library_count": self.entries.count,
                     "menu_bar": self.statusItem.button != nil, "hover_wave": true,
-                    "stationary_hover_does_not_repeat": true, "paused_and_disabled_hover": true]
+                    "stationary_hover_does_not_repeat": true, "paused_and_disabled_hover": true,
+                    "hover_reentry_ignores_loop_interval": true, "pet_size_25_percent": true]
                 self.section = "settings"
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) {
                     do {

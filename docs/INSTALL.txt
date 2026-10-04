@@ -1,13 +1,15 @@
-Pawlet 0.3.0 — macOS 13 or later
+Pawlet 0.4.0 — macOS 13 or later
 
 Drag Pawlet.app to Applications, then open it from Applications.
 The paw in the menu bar opens your library and settings.
 Closing the library keeps the pets running; choose Quit from the paw menu to exit.
 
-Idle motion is off by default. Import a .petpack to add another character.
+Idle motion is off by default. Import a .petpack, Codex pet ZIP/folder, or complete sprite sheet to add a character.
 Hover or click to wave, double-click to jump, drag to move, or right-click for actions.
 Enabled idle/activity loops rest ten seconds between plays by default.
-Settings lets you adjust the interval or turn off hover greetings.
+Hover re-entry waves immediately, independently of that interval.
+Settings lets you adjust the interval, disable greetings, or shrink pets to 25%.
+Open folder reveals a pet in Finder; Share exports a pack, ZIP or Codex folder.
 Create opens a prepared Codex prompt; Codex is optional for running existing pets.
 
 Preview builds are ad-hoc signed and not Apple-notarized. A downloaded preview

@@ -17,13 +17,14 @@ final class SpriteAtlas {
     private var frames: [String: NSImage] = [:]
     private var alphaMasks: [String: [UInt8]] = [:]
 
-    static func readImage(_ url: URL) throws -> CGImage {
+    static func readImage(_ url: URL, allowWebP: Bool = false) throws -> CGImage {
         guard (try url.resourceValues(forKeys: [.fileSizeKey]).fileSize ?? 0) <= 20 * 1024 * 1024 else {
             throw AtlasError.invalid("The sprite sheet exceeds 20 MB.")
         }
         let data = try Data(contentsOf: url)
         guard !data.isEmpty, let source = CGImageSourceCreateWithData(data as CFData, nil),
-              CGImageSourceGetType(source) as String? == "public.png",
+              let imageType = CGImageSourceGetType(source) as String?,
+              (imageType == "public.png" || (allowWebP && imageType == "org.webmproject.webp")),
               let properties = CGImageSourceCopyPropertiesAtIndex(source, 0, nil) as? [CFString: Any],
               let width = properties[kCGImagePropertyPixelWidth] as? Int,
               let height = properties[kCGImagePropertyPixelHeight] as? Int,
