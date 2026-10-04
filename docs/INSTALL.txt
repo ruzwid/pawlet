@@ -1,4 +1,4 @@
-Pawlet 0.5.0 — macOS 13 or later
+Pawlet 0.5.1 — macOS 13 or later
 
 Drag Pawlet.app to Applications, then open it from Applications.
 The paw in the menu bar opens your library and settings.
@@ -22,3 +22,5 @@ This is an independent app, not an official OpenAI product.
 Pets folder in the library toolbar opens all installed pets.
 Choose an animation in a pet’s preview to loop it; pause or step through its frames.
 On hover sets this pet’s greeting. Settings has the default for other pets.
+
+Each companion card has Show pet / Hide pet for one-click desktop visibility.

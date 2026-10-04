@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.5.1
+
+- Fix stale preview artwork by loading the selected pet through one app-owned selection path.
+- Add one-click Show pet / Hide pet actions to every card without changing the current selection.
+- Tighten spacing, align the hover setting, and keep desktop playback and sharing actions visible in the inspector.
+- Trim transparent margins for thumbnail and preview presentation, using one shared crop per animation to preserve relative pose movement. Stored artwork is unchanged.
+
 ## 0.5.0
 
 - Refresh the native library, settings and creation sheet with a warm light/dark palette and a searchable companion collection.

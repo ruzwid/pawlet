@@ -131,7 +131,7 @@ enum ProjectTests {
             "pause and reduced motion", "pet-pack roundtrip preserves bytes", "arbitrary third pet", "rename persistence",
             "duplicate import rejected", "path traversal rejected", "truncated archive rejected", "schema validation",
             "dynamic command targets", "Codex prompt encoding", "creation skill bundled", "idle and activity rest intervals",
-            "zero interval and playback speed", "immediate hover re-entry", "blocked and disabled hover", "settings upgrade", "25 percent size persistence", "automatic and explicit artwork styles", "Codex folder and ZIP imports", "Codex export roundtrip", "unsafe Codex transfers rejected", "Finder ZIP metadata ignored", "unused frames ignored without changing bytes", "missing required frames rejected", "all hover reactions restore idle", "hover reaction persistence", "preview looping and speed", "v1 and v2 preview choices", "frame stepping and reduced motion"]]
+            "zero interval and playback speed", "immediate hover re-entry", "blocked and disabled hover", "settings upgrade", "25 percent size persistence", "automatic and explicit artwork styles", "Codex folder and ZIP imports", "Codex export roundtrip", "unsafe Codex transfers rejected", "Finder ZIP metadata ignored", "unused frames ignored without changing bytes", "missing required frames rejected", "all hover reactions restore idle", "hover reaction persistence", "preview looping and speed", "v1 and v2 preview choices", "frame stepping and reduced motion", "distinct artwork selection switches", "shared preview crop preserves pose registration"]]
         print(String(data: try JSONSerialization.data(withJSONObject: report, options: [.prettyPrinted, .sortedKeys]), encoding: .utf8)!)
     }
 }

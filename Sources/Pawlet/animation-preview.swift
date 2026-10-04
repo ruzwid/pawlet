@@ -41,9 +41,11 @@ final class AnimationPreviewModel: ObservableObject {
     private var started = 0.0
     var availableClips: [PreviewClip] { PreviewClip.available(hasLookDirections: atlas?.hasLookDirections == true) }
 
+    func clear() {
+        stop(); atlas = nil; error = nil; clip = .idle; frameIndex = 0; image = nil
+    }
     func load(_ pet: LibraryPet) {
-        stop()
-        atlas = nil; error = nil; clip = .idle; frameIndex = 0; image = nil
+        clear()
         do { atlas = try SpriteAtlas(manifest: pet.manifest, directory: pet.directory); display(0) }
         catch { self.error = error.localizedDescription }
     }
@@ -77,7 +79,7 @@ final class AnimationPreviewModel: ObservableObject {
     }
     private func display(_ index: Int) {
         guard let atlas = atlas else { return }
-        if frameIndex != index || image == nil { frameIndex = index; image = atlas.frame(clip.frame(at: index)) }
+        if frameIndex != index || image == nil { frameIndex = index; image = atlas.previewFrame(clip.frame(at: index)) }
     }
     deinit { timer?.invalidate() }
 }
@@ -95,16 +97,16 @@ struct AnimationPreviewView: View {
                         .menuStyle(.borderlessButton).fixedSize().accessibilityLabel("Preview animation")
                     Spacer()
                     Text(model.isPlaying ? "PLAYING" : "PREVIEW").font(.system(size: 9, weight: .semibold)).tracking(1.2).foregroundStyle(PawletTheme.secondary)
-                }.padding(16)
+                }.padding(12)
                 ZStack {
-                    Ellipse().fill(petAccent.opacity(0.10)).frame(width: 110, height: 12).offset(y: 74)
+                    Ellipse().fill(petAccent.opacity(0.10)).frame(width: 110, height: 12).offset(y: 64)
                     if let image = model.image {
-                        Image(nsImage: image).resizable().interpolation(.high).scaledToFit().frame(width: 170, height: 184)
+                        Image(nsImage: image).resizable().interpolation(.high).scaledToFit().frame(width: 170, height: 158)
                             .accessibilityLabel("\(model.clip.title), frame \(model.frameIndex + 1) of \(model.clip.count)")
                     } else {
                         Image(systemName: "pawprint").font(.system(size: 52)).foregroundStyle(petAccent.opacity(0.35)).accessibilityHidden(true)
                     }
-                }.frame(maxWidth: .infinity).frame(height: 185)
+                }.frame(maxWidth: .infinity).frame(height: 160)
                 HStack(spacing: 10) {
                     Button { if model.isPlaying { model.stop() } else { model.play() } } label: {
                         Label(model.isPlaying ? "Pause" : "Play", systemImage: model.isPlaying ? "pause.fill" : "play.fill")
@@ -138,7 +140,7 @@ struct AnimationPreviewView: View {
                 LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible()), GridItem(.flexible())], spacing: 6) {
                     ForEach(model.availableClips.filter { $0 != .look }) { clip in
                         Button { model.select(clip) } label: {
-                            Label(clip == .look ? "Gaze" : clip.title, systemImage: clip.symbol).lineLimit(1).minimumScaleFactor(0.85).font(.system(size: 11, weight: model.clip == clip ? .semibold : .medium))
+                            Label(clip.title, systemImage: clip.symbol).lineLimit(1).minimumScaleFactor(0.85).font(.system(size: 11, weight: model.clip == clip ? .semibold : .medium))
                                 .frame(maxWidth: .infinity, alignment: .leading).padding(.horizontal, 10).frame(height: 33)
                                 .foregroundStyle(model.clip == clip ? petAccent : Color.primary)
                                 .background(model.clip == clip ? petAccent.opacity(0.12) : PawletTheme.surface, in: RoundedRectangle(cornerRadius: 9))

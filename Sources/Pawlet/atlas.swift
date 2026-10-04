@@ -16,6 +16,7 @@ final class SpriteAtlas {
     var hasLookDirections: Bool { manifest.spriteVersion == 2 }
     private var frames: [String: NSImage] = [:]
     private var alphaMasks: [String: [UInt8]] = [:]
+    private var previewFrames: [String: NSImage] = [:]
 
     static func readImage(_ url: URL, allowWebP: Bool = false) throws -> CGImage {
         guard (try url.resourceValues(forKeys: [.fileSizeKey]).fileSize ?? 0) <= 20 * 1024 * 1024 else {
@@ -69,6 +70,22 @@ final class SpriteAtlas {
         }
     }
 
+    func previewFrame(_ frame: SpriteFrame) -> NSImage {
+        let groupRows = frame.row >= 9 ? [9, 10] : [frame.row]
+        let requestedKey = "\(frame.row):\(frame.column)"
+        if let cached = previewFrames[requestedKey] { return cached }
+        let groupKeys = alphaMasks.keys.filter { key in groupRows.contains(Int(key.split(separator: ":")[0])!) }
+        guard let bounds = Self.presentationBounds(groupKeys.compactMap { alphaMasks[$0] }) else { return self.frame(frame) }
+        for key in groupKeys {
+            let indices = key.split(separator: ":").compactMap { Int($0) }
+            let rectangle = bounds.offsetBy(dx: CGFloat(indices[1] * 192), dy: CGFloat(indices[0] * 208))
+            if let cell = image.cropping(to: rectangle) {
+                previewFrames[key] = NSImage(cgImage: cell, size: bounds.size)
+            }
+        }
+        return previewFrames[requestedKey] ?? self.frame(frame)
+    }
+
     func frame(_ frame: SpriteFrame) -> NSImage { frames["\(frame.row):\(frame.column)"] ?? frames["0:0"]! }
     var populatedCount: Int { frames.count }
 
@@ -80,12 +97,31 @@ final class SpriteAtlas {
         return false
     }
 
+    private static func presentationBounds(_ masks: [[UInt8]]) -> CGRect? {
+        var minimumX = 192, minimumY = 208, maximumX = -1, maximumY = -1
+        for mask in masks {
+            for index in mask.indices where mask[index] > 0 {
+                minimumX = min(minimumX, index % 192); maximumX = max(maximumX, index % 192)
+                minimumY = min(minimumY, index / 192); maximumY = max(maximumY, index / 192)
+            }
+        }
+        guard maximumX >= minimumX, maximumY >= minimumY else { return nil }
+        return CGRect(x: minimumX, y: minimumY, width: maximumX - minimumX + 1, height: maximumY - minimumY + 1)
+            .insetBy(dx: -8, dy: -8).intersection(CGRect(x: 0, y: 0, width: 192, height: 208)).integral
+    }
+
     static func thumbnail(directory: URL) throws -> NSImage {
         let atlas = try readImage(directory.appendingPathComponent("spritesheet.png"))
         let cell = atlas.cropping(to: CGRect(x: 0, y: 0, width: 192, height: 208))!
         let context = CGContext(data: nil, width: 192, height: 208, bitsPerComponent: 8, bytesPerRow: 768,
             space: CGColorSpaceCreateDeviceRGB(), bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue)!
         context.draw(cell, in: CGRect(x: 0, y: 0, width: 192, height: 208))
-        return NSImage(cgImage: context.makeImage()!, size: NSSize(width: 192, height: 208))
+        let pixels = context.data!.assumingMemoryBound(to: UInt8.self)
+        let alpha = stride(from: 3, to: 192 * 208 * 4, by: 4).map { pixels[$0] }
+        let decoded = context.makeImage()!
+        if let bounds = presentationBounds([alpha]), let cropped = decoded.cropping(to: bounds) {
+            return NSImage(cgImage: cropped, size: bounds.size)
+        }
+        return NSImage(cgImage: decoded, size: NSSize(width: 192, height: 208))
     }
 }

@@ -48,3 +48,9 @@ The previous `desktoppets://` scheme remains supported. Pawlet uses `com.ruzwid.
 Manifest schema and sprite format have separate versions. v1/v2 geometry is intentionally fixed for compatibility with the existing artwork pipeline. Unknown metadata fields are ignored by the app; exports contain the known schema fields. Future frame timing/geometry should add a new sprite version and renderer, with fixtures and migration tests. Imported packs remain data, not plugins that execute code.
 
 The included creation skill is an original wrapper around a separately installed generation workflow. The app does not embed an AI SDK, store an API key or invoke a paid generation job itself. Codex opens with a prepared composer, and the user submits the request. Import is a separate explicit step after inspecting the resulting pack.
+
+## Selection and presentation
+
+AppDelegate owns selection and synchronously refreshes the preview atlas and image when the stable selected ID changes. Views never independently load artwork from lifecycle callbacks. Library reloads also refresh the selected snapshot, and removing selection clears the old preview. Each card has separate selection and visibility buttons; showing/hiding an unselected pet leaves selection untouched.
+
+Thumbnail presentation crops only transparent margins from the idle cell. Preview presentation computes the union of visible pixels across a complete animation (or all sixteen gaze poses), adds a small inset, and uses that same rectangle for every frame in the group. Relative jumping displacement and gaze registration remain intact. Cropped images are display caches only; imports, exports and desktop rendering use the original cells. The inspector keeps sharing and desktop actions below the scroll area so shorter windows do not hide them.

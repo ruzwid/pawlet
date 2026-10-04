@@ -78,7 +78,7 @@ struct LibraryView: View {
         app.entries.filter { search.isEmpty || $0.manifest.name.localizedStandardContains(search) || $0.manifest.description.localizedStandardContains(search) }
     }
     private var libraryPage: some View {
-        VStack(alignment: .leading, spacing: 22) {
+        VStack(alignment: .leading, spacing: 18) {
             HStack(alignment: .center, spacing: 8) {
                 VStack(alignment: .leading, spacing: 5) {
                     Text("A little company.").font(.system(size: 28, weight: .bold, design: .rounded))
@@ -98,8 +98,8 @@ struct LibraryView: View {
                     Button("Import your first pet") { app.importPicker() }.buttonStyle(PawletActionStyle(prominent: true))
                 }.frame(maxWidth: .infinity, maxHeight: .infinity)
             } else {
-                HStack(alignment: .top, spacing: 20) {
-                    VStack(alignment: .leading, spacing: 15) {
+                HStack(alignment: .top, spacing: 18) {
+                    VStack(alignment: .leading, spacing: 12) {
                         HStack {
                             Text("Your companions").font(.system(size: 14, weight: .semibold))
                             Text("\(app.entries.count)").font(.caption.monospacedDigit()).foregroundStyle(PawletTheme.secondary)
@@ -122,10 +122,10 @@ struct LibraryView: View {
                                 }.padding(2)
                             }
                         }
-                    }.frame(maxWidth: .infinity)
+                    }.frame(maxWidth: .infinity).padding(.top, 2)
                     if let selected = app.selected {
                         PetInspectorView(app: app, preview: app.preview, pet: selected,
-                            rename: { proposedName = selected.manifest.name; renaming = true }, remove: { removing = true }).frame(width: 388)
+                            rename: { proposedName = selected.manifest.name; renaming = true }, remove: { removing = true }).frame(width: 368)
                     }
                 }.frame(maxHeight: .infinity)
             }
@@ -139,23 +139,28 @@ struct LibraryView: View {
 
     private func petCard(_ pet: LibraryPet) -> some View {
         let selected = app.selectedID == pet.id
-        return Button { app.selectedID = pet.id } label: {
-            VStack(alignment: .leading, spacing: 0) {
-                ZStack(alignment: .topTrailing) {
-                    PawletTheme.stage.opacity(selected ? 1 : 0.5)
-                    Image(nsImage: app.image(for: pet.id)).resizable().interpolation(.high).scaledToFit().frame(height: 136).frame(maxWidth: .infinity).padding(.top, 8)
-                    if app.isVisible(pet.id) {
-                        Image(systemName: "checkmark.circle.fill").foregroundStyle(petAccent).padding(10).accessibilityLabel("On desktop")
-                    }
-                }.frame(height: 150).clipped()
-                VStack(alignment: .leading, spacing: 5) {
-                    Text(pet.manifest.name).font(.system(size: 14, weight: .semibold, design: .rounded)).lineLimit(1)
-                    Text(app.isVisible(pet.id) ? "On your desktop" : "Ready to join you").font(.system(size: 11)).foregroundStyle(PawletTheme.secondary)
-                }.padding(13)
-            }.background(PawletTheme.surface).clipShape(RoundedRectangle(cornerRadius: 16))
-                .overlay(RoundedRectangle(cornerRadius: 16).stroke(selected ? petAccent : PawletTheme.border, lineWidth: selected ? 1.5 : 1))
-                .shadow(color: Color.black.opacity(selected ? 0.04 : 0), radius: 8, y: 3)
-        }.buttonStyle(.plain).accessibilityLabel("Select \(pet.manifest.name)").accessibilityAddTraits(selected ? .isSelected : []).accessibilityRemoveTraits(selected ? [] : .isSelected)
+        let visible = app.isVisible(pet.id)
+        return VStack(alignment: .leading, spacing: 0) {
+            Button { app.selectedID = pet.id } label: {
+                VStack(alignment: .leading, spacing: 0) {
+                    Image(nsImage: app.image(for: pet.id)).resizable().interpolation(.high).scaledToFit()
+                        .frame(height: 132).frame(maxWidth: .infinity).padding(.vertical, 8)
+                        .background(PawletTheme.stage.opacity(selected ? 1 : 0.5))
+                    Text(pet.manifest.name).font(.system(size: 14, weight: .semibold, design: .rounded))
+                        .lineLimit(1).padding(.horizontal, 12).padding(.top, 12).padding(.bottom, 8)
+                }.contentShape(Rectangle())
+            }.buttonStyle(.plain).accessibilityLabel("Select \(pet.manifest.name)")
+                .accessibilityAddTraits(selected ? .isSelected : []).accessibilityRemoveTraits(selected ? [] : .isSelected)
+            Button { app.togglePetVisibility(pet.id) } label: {
+                Label(visible ? "Hide pet" : "Show pet", systemImage: visible ? "eye.slash" : "plus.circle")
+                    .font(.system(size: 11, weight: .medium)).frame(maxWidth: .infinity).frame(height: 28)
+                    .foregroundStyle(visible ? petAccent : Color.primary)
+                    .background(visible ? petAccent.opacity(0.10) : PawletTheme.canvas, in: RoundedRectangle(cornerRadius: 8))
+            }.buttonStyle(.plain).accessibilityLabel("\(visible ? "Hide" : "Show") \(pet.manifest.name) on desktop")
+                .help("Show or hide \(pet.manifest.name) with one click; keep the current preview selected.")
+                .padding(.horizontal, 10).padding(.bottom, 10)
+        }.background(PawletTheme.surface).clipShape(RoundedRectangle(cornerRadius: 14))
+            .overlay(RoundedRectangle(cornerRadius: 14).stroke(selected ? petAccent : PawletTheme.border, lineWidth: selected ? 1.5 : 1))
     }
 
     private var settingsPage: some View {
@@ -214,7 +219,7 @@ struct LibraryView: View {
             Text("The app works without Codex. Codex is only used when you choose to create new artwork.")
             Text("No accounts, telemetry or network listener. Imported pets are image and metadata files; they don't run code.").font(.callout).foregroundStyle(.secondary)
             Button("Learn about pet packs") { formatHelp = true }
-            Text("Version 0.5.0 · macOS 13+").font(.caption).foregroundStyle(.secondary)
+            Text("Version 0.5.1 · macOS 13+").font(.caption).foregroundStyle(.secondary)
             Spacer()
         }.padding(36).frame(maxWidth: .infinity, alignment: .leading)
     }

@@ -7,7 +7,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject {
     let defaults: UserDefaults = CommandLine.arguments.contains("--ui-smoke-test")
         ? UserDefaults(suiteName: "com.ruzwid.pawlet.tests")! : .standard
     @Published var entries: [LibraryPet] = []
-    @Published var selectedID: String?
+    @Published var selectedID: String? {
+        didSet { if selectedID != oldValue { refreshPreview() } }
+    }
     @Published var statuses: [String: String] = [:]
     @Published var visibility: [String: Bool] = [:]
     @Published var section = "library"
@@ -112,8 +114,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject {
         thumbnails = [:]
         for entry in entries { thumbnails[entry.id] = try? SpriteAtlas.thumbnail(directory: entry.directory) }
         if !entries.contains(where: { $0.id == selectedID }) { selectedID = entries.first?.id }
+        else { refreshPreview() }
         if !library.issues.isEmpty { message = library.issues.joined(separator: "\n") }
     }
+    private func refreshPreview() {
+        if let selected = selected { preview.load(selected) }
+        else { preview.clear() }
+    }
+    func togglePetVisibility(_ id: String) { setPetVisible(id, show: !isVisible(id)) }
     func image(for id: String) -> NSImage { thumbnails[id] ?? NSImage(size: NSSize(width: 192, height: 208)) }
     func isVisible(_ id: String) -> Bool { visibility[id] ?? false }
     func setPetVisible(_ id: String, show: Bool) {
@@ -373,18 +381,29 @@ final class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject {
                 self.settings.greetOnHover = true
                 pet.tick(now)
                 self.updateStatus(entry.id, status: "Idle")
-                self.setPetVisible(entry.id, show: false)
+                let selectionBeforeVisibility = self.selectedID
+                self.togglePetVisibility(entry.id)
+                guard !self.isVisible(entry.id) && self.selectedID == selectionBeforeVisibility else { throw PetLibraryError.invalid("One-click hide changed the preview selection") }
                 self.preview.select(.waving)
                 guard !self.isVisible(entry.id) else { throw PetLibraryError.invalid("Preview showed a hidden desktop pet") }
                 self.preview.stop(); self.preview.select(.idle); self.preview.stop()
-                self.setPetVisible(entry.id, show: true)
+                self.togglePetVisibility(entry.id)
+                guard self.isVisible(entry.id) && self.selectedID == selectionBeforeVisibility else { throw PetLibraryError.invalid("One-click show changed the preview selection") }
+                for candidate in self.entries {
+                    self.selectedID = candidate.id
+                    guard self.preview.atlas?.id == candidate.id,
+                          self.preview.image === self.preview.atlas?.previewFrame(SpriteFrame(row: 0, column: 0)) else { throw PetLibraryError.invalid("Selected preview artwork mismatch") }
+                    self.preview.select(.jumping)
+                }
+                self.selectedID = nil
+                self.selectedID = selectionBeforeVisibility
                 try self.captureOwnView(self.controls?.contentView, to: folder.appendingPathComponent("library.png"))
                 let report: [String: Any] = ["ok": true, "calm_idle_stays_still": true, "pack_export_import": true,
                     "dynamic_pet_url": true, "native_window_and_size": true, "library_count": self.entries.count,
                     "menu_bar": self.statusItem.button != nil, "hover_wave": true,
                     "stationary_hover_does_not_repeat": true, "paused_and_disabled_hover": true,
                     "hover_reentry_ignores_loop_interval": true, "pet_size_25_percent": true,
-                    "per_pet_hover_reactions": true, "preview_does_not_change_desktop": true, "preview_keeps_hidden_pets_hidden": true, "preview_reduced_motion": true, "preview_frame_step": true]
+                    "per_pet_hover_reactions": true, "preview_does_not_change_desktop": true, "preview_keeps_hidden_pets_hidden": true, "one_click_visibility_preserves_selection": true, "preview_selection_matches_artwork": true, "preview_reduced_motion": true, "preview_frame_step": true]
                 self.section = "settings"
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) {
                     do {
