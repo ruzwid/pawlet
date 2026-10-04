@@ -24,7 +24,7 @@ Codex pet folders/ZIPs are normalized into a validated library snapshot. Only kn
 
 Library folders live in `~/Library/Application Support/Pawlet/Library/<id>/`. Each stores `manifest.json` and the original `spritesheet.png`. Preferences, visibility and screen positions use UserDefaults under the app's bundle ID. Creation workspaces live separately beside the Library folder; deleting a runtime pet does not erase its generation sources.
 
-Visible pets and the single selected preview load complete atlases; hiding a pet releases its window and frame cache. Thumbnails are copied from the first cell without retaining the entire atlas. Up to six pets can be active. A shared 30 Hz timer polls local pointer position and advances visible behavior; frames redraw only when their selected cell changes. The timer stops during system sleep and resumes on wake. Stored pets need no active process.
+Visible pets and the single selected preview load complete atlases; hiding a pet releases its window and frame cache. Thumbnails are copied from the first cell without retaining the entire atlas. Bulk visibility uses the same individual window lifecycle and leaves selection and motion settings intact. There is no fixed window count cap; each visible atlas contributes to memory use. A shared 30 Hz timer polls local pointer position and advances visible behavior; frames redraw only when their selected cell changes. The timer stops during system sleep and resumes on wake. Stored pets need no active process.
 
 ## Behavior
 

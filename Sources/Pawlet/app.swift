@@ -121,20 +121,22 @@ final class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject {
         if let selected = selected { preview.load(selected) }
         else { preview.clear() }
     }
+    var hasVisibleMinis: Bool { entries.contains { isVisible($0.id) } }
+    func setAllMinisVisible(_ show: Bool) {
+        for entry in entries where isVisible(entry.id) != show { setPetVisible(entry.id, show: show) }
+    }
     func togglePetVisibility(_ id: String) { setPetVisible(id, show: !isVisible(id)) }
     func image(for id: String) -> NSImage { thumbnails[id] ?? NSImage(size: NSSize(width: 192, height: 208)) }
     func isVisible(_ id: String) -> Bool { visibility[id] ?? false }
     func setPetVisible(_ id: String, show: Bool) {
         guard let entry = entries.first(where: { $0.id == id }) else { return }
         if show && pets.first(where: { $0.atlas.id == id }) == nil {
-            guard pets.filter({ $0.visible }).count < 6 else { message = "You can show up to six pets at once. Hide one to make room."; return }
             do {
                 let pet = DesktopPet(atlas: try SpriteAtlas(manifest: entry.manifest, directory: entry.directory), owner: self, index: pets.count)
                 pets.append(pet)
             } catch { message = error.localizedDescription; return }
         }
         if let pet = pets.first(where: { $0.atlas.id == id }) {
-            if show && !pet.visible && pets.filter({ $0.visible }).count >= 6 { message = "You can show up to six pets at once. Hide one to make room."; return }
             pet.setVisible(show)
             if !show { pets.removeAll { $0.atlas.id == id }; pet.savePosition(); pet.panel.close() }
         }
@@ -164,7 +166,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject {
     }
 
     func importPicker() {
-        let panel = NSOpenPanel(); panel.title = "Add a pet"; panel.message = "Choose a pet pack, Codex pet ZIP/folder, pet.json, or complete PNG sprite sheet."
+        let panel = NSOpenPanel(); panel.title = "Add a mini"; panel.message = "Choose a mini pack, Codex mini ZIP/folder, pet.json, or complete PNG sprite sheet."
         panel.allowedContentTypes = [UTType(filenameExtension: "petpack") ?? .data, .png, .zip, .json]
         panel.canChooseDirectories = true
         panel.allowsMultipleSelection = false
@@ -190,12 +192,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject {
         let panel = NSSavePanel(); panel.title = "Export \(selected.manifest.name) for Codex"
         panel.nameFieldStringValue = selected.id
         panel.directoryURL = FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent(".codex/pets", isDirectory: true)
-        panel.message = "Save this pet folder in Codex's pets folder (~/.codex/pets), or choose another location to share it. Existing folders are kept intact."
+        panel.message = "Save this mini folder in Codex's minis folder (~/.codex/pets), or choose another location to share it. Existing folders are kept intact."
         if panel.runModal() == .OK, let url = panel.url {
             do {
                 try CodexPetTransfer.export(selected, to: url)
                 NSWorkspace.shared.activateFileViewerSelecting([url])
-                message = "Codex folder saved. Open Codex → Settings → Pets and refresh or restart to choose \(selected.manifest.name)."
+                message = "Codex folder saved. Open Codex and refresh or restart to choose \(selected.manifest.name)."
             } catch { message = error.localizedDescription }
         }
     }
@@ -241,19 +243,19 @@ final class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject {
     func buildMenus() {
         guard statusItem != nil else { return }
         let menu = NSMenu()
-        menu.addItem(item("Open pet library…", action: #selector(showControls), key: "l"))
-        menu.addItem(item("Add a pet…", action: #selector(importMenu)))
+        menu.addItem(item("Open mini library…", action: #selector(showControls), key: "l"))
+        menu.addItem(item("Add a mini…", action: #selector(importMenu)))
         menu.addItem(item("Create with Codex…", action: #selector(createMenu)))
         menu.addItem(.separator())
         for entry in entries { menu.addItem(item("Show \(entry.manifest.name)", action: #selector(togglePetMenu(_:)), object: entry.id, checked: isVisible(entry.id))) }
         menu.addItem(.separator())
         menu.addItem(item("Pause animations", action: #selector(pauseMenu), checked: settings.paused))
         menu.addItem(item("Settings…", action: #selector(settingsMenu), key: ","))
-        menu.addItem(item("Bring pets back to this screen", action: #selector(resetPositions)))
+        menu.addItem(item("Bring minis back to this screen", action: #selector(resetPositions)))
         menu.addItem(.separator()); menu.addItem(item("Quit Pawlet", action: #selector(quit), key: "q"))
         statusItem.menu = menu
         let main = NSMenu(), appItem = NSMenuItem(title: "Pawlet", action: nil, keyEquivalent: ""), appMenu = NSMenu()
-        appMenu.addItem(item("Pet library…", action: #selector(showControls), key: "l"))
+        appMenu.addItem(item("Mini library…", action: #selector(showControls), key: "l"))
         appMenu.addItem(item("Settings…", action: #selector(settingsMenu), key: ","))
         appMenu.addItem(.separator()); appMenu.addItem(item("Quit Pawlet", action: #selector(quit), key: "q"))
         appItem.submenu = appMenu; main.addItem(appItem)
@@ -319,7 +321,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject {
                 guard abs(pet.panel.frame.width - 48) < 0.01 && abs(pet.panel.frame.height - 52) < 0.01 else { throw PetLibraryError.invalid("25 percent size control") }
                 self.settings.size = 1
                 self.handleURL(URL(string: "pawlet://state?pet=\(entry.id)&state=waiting&seconds=5")!)
-                guard pet.engine.action == .waiting else { throw PetLibraryError.invalid("Dynamic pet command") }
+                guard pet.engine.action == .waiting else { throw PetLibraryError.invalid("Dynamic mini command") }
                 pet.engine.reset()
                 let outsidePet = NSPoint(x: pet.panel.frame.minX - 20, y: pet.panel.frame.minY - 20)
                 let overPet = NSPoint(x: pet.panel.frame.minX + 96, y: pet.panel.frame.minY + 87)
@@ -341,7 +343,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject {
                 }
                 for reaction in HoverReaction.allCases {
                     self.setHoverOverride(reaction, for: entry.id)
-                    guard self.hoverReaction(for: entry.id) == reaction else { throw PetLibraryError.invalid("Pet hover override") }
+                    guard self.hoverReaction(for: entry.id) == reaction else { throw PetLibraryError.invalid("Mini hover override") }
                     pet.engine.reset()
                     pet.tick(now + 3, mouseLocation: outsidePet)
                     pet.tick(now + 3.01, mouseLocation: overPet)
@@ -385,7 +387,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject {
                 self.togglePetVisibility(entry.id)
                 guard !self.isVisible(entry.id) && self.selectedID == selectionBeforeVisibility else { throw PetLibraryError.invalid("One-click hide changed the preview selection") }
                 self.preview.select(.waving)
-                guard !self.isVisible(entry.id) else { throw PetLibraryError.invalid("Preview showed a hidden desktop pet") }
+                guard !self.isVisible(entry.id) else { throw PetLibraryError.invalid("Preview showed a hidden desktop mini") }
                 self.preview.stop(); self.preview.select(.idle); self.preview.stop()
                 self.togglePetVisibility(entry.id)
                 guard self.isVisible(entry.id) && self.selectedID == selectionBeforeVisibility else { throw PetLibraryError.invalid("One-click show changed the preview selection") }
@@ -397,13 +399,40 @@ final class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject {
                 }
                 self.selectedID = nil
                 self.selectedID = selectionBeforeVisibility
+                let originalEntries = self.entries
+                let originalVisibility = self.visibility
+                let originalSelection = self.selectedID
+                let settingsEncoder = JSONEncoder(); settingsEncoder.outputFormatting = .sortedKeys
+                let originalSettings = try settingsEncoder.encode(self.settings)
+                self.setAllMinisVisible(false)
+                self.entries = (0..<8).map { index in
+                    var manifest = entry.manifest
+                    manifest.id = "bulk-mini-\(index)"; manifest.name = "Mini \(index + 1)"
+                    return LibraryPet(manifest: manifest, directory: entry.directory)
+                }
+                self.selectedID = self.entries[0].id
+                let bulkSelection = self.selectedID
+                self.setAllMinisVisible(true)
+                guard self.pets.count == 8 && self.entries.allSatisfy({ self.isVisible($0.id) }),
+                      self.selectedID == bulkSelection && self.preview.atlas?.id == bulkSelection else {
+                    throw PetLibraryError.invalid("Show all minis missed a window or changed selection")
+                }
+                self.setAllMinisVisible(false)
+                guard self.pets.isEmpty && !self.hasVisibleMinis && self.selectedID == bulkSelection,
+                      try settingsEncoder.encode(self.settings) == originalSettings else {
+                    throw PetLibraryError.invalid("Hide all minis changed selection, settings or retained windows")
+                }
+                self.entries = originalEntries; self.selectedID = originalSelection
+                for originalEntry in originalEntries where originalVisibility[originalEntry.id] == true {
+                    self.setPetVisible(originalEntry.id, show: true)
+                }
                 try self.captureOwnView(self.controls?.contentView, to: folder.appendingPathComponent("library.png"))
                 let report: [String: Any] = ["ok": true, "calm_idle_stays_still": true, "pack_export_import": true,
                     "dynamic_pet_url": true, "native_window_and_size": true, "library_count": self.entries.count,
                     "menu_bar": self.statusItem.button != nil, "hover_wave": true,
                     "stationary_hover_does_not_repeat": true, "paused_and_disabled_hover": true,
                     "hover_reentry_ignores_loop_interval": true, "pet_size_25_percent": true,
-                    "per_pet_hover_reactions": true, "preview_does_not_change_desktop": true, "preview_keeps_hidden_pets_hidden": true, "one_click_visibility_preserves_selection": true, "preview_selection_matches_artwork": true, "preview_reduced_motion": true, "preview_frame_step": true]
+                    "per_pet_hover_reactions": true, "preview_does_not_change_desktop": true, "preview_keeps_hidden_pets_hidden": true, "bulk_visibility_eight_minis": true, "one_click_visibility_preserves_selection": true, "preview_selection_matches_artwork": true, "preview_reduced_motion": true, "preview_frame_step": true]
                 self.section = "settings"
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) {
                     do {

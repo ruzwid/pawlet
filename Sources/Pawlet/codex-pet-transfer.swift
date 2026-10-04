@@ -37,11 +37,11 @@ enum CodexPetTransfer {
         let values = try source.resourceValues(forKeys: [.isRegularFileKey, .isSymbolicLinkKey, .fileSizeKey])
         guard values.isRegularFile == true, values.isSymbolicLink != true,
               let size = values.fileSize, size > 0, size <= maximumBytes else {
-            throw PetLibraryError.invalid("Pet files must be plain files within the size limits.")
+            throw PetLibraryError.invalid("Mini files must be plain files within the size limits.")
         }
         try FileManager.default.copyItem(at: source, to: destination)
         guard (try destination.resourceValues(forKeys: [.fileSizeKey]).fileSize ?? Int.max) <= maximumBytes else {
-            throw PetLibraryError.invalid("A pet file changed during import. Try again.")
+            throw PetLibraryError.invalid("A mini file changed during import. Try again.")
         }
     }
 
@@ -81,7 +81,7 @@ enum CodexPetTransfer {
 
     static func export(_ pet: LibraryPet, to destination: URL) throws {
         guard !FileManager.default.fileExists(atPath: destination.path) else {
-            throw PetLibraryError.invalid("That folder already exists. Choose a new folder to keep the existing pet intact.")
+            throw PetLibraryError.invalid("That folder already exists. Choose a new folder to keep the existing mini intact.")
         }
         let parent = destination.deletingLastPathComponent()
         try FileManager.default.createDirectory(at: parent, withIntermediateDirectories: true)

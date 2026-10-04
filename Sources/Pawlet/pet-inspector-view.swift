@@ -18,7 +18,7 @@ struct PetInspectorView: View {
                 Spacer(minLength: 8)
                 Menu {
                     Button("Rename…", action: rename)
-                    Button("Show this pet's files") { app.revealSelected() }
+                    Button("Show this mini's files") { app.revealSelected() }
                     Divider()
                     Button("Move to Trash…", role: .destructive, action: remove)
                 } label: { Image(systemName: "ellipsis") }.menuStyle(.borderlessButton).frame(width: 25).accessibilityLabel("Options for \(pet.manifest.name)")
@@ -30,7 +30,7 @@ struct PetInspectorView: View {
                     Text("Default (\(app.settings.hoverReaction.title))").tag("default")
                     ForEach(HoverReaction.allCases, id: \.rawValue) { reaction in Text(reaction.title).tag(reaction.rawValue) }
                 }.labelsHidden().font(.callout).fixedSize().disabled(!app.settings.greetOnHover)
-                    .help("Choose this pet's greeting, or follow the default in Settings. Each entry plays once without a cooldown.")
+                    .help("Choose this mini's greeting, or follow the default in Settings. Each entry plays once without a cooldown.")
             }.padding(.vertical, 2)
             if !app.settings.greetOnHover { Text("Hover reactions are off in Settings.").font(.caption).foregroundStyle(PawletTheme.secondary) }
             ScrollView {
@@ -44,10 +44,10 @@ struct PetInspectorView: View {
                 Button { app.perform(PetState(rawValue: preview.clip.rawValue) ?? .idle, id: pet.id) } label: {
                     Label("Play on desktop", systemImage: "desktopcomputer")
                 }.buttonStyle(PawletActionStyle()).disabled(preview.clip == .look || preview.atlas == nil || app.settings.paused)
-                    .help("Play the selected animation on your desktop pet. Preview playback stays separate.")
+                    .help("Play the selected animation on your desktop mini. Preview playback stays separate.")
                 Spacer(minLength: 0)
                 Menu {
-                    Button("Export pet pack…") { app.exportSelected() }
+                    Button("Export mini pack…") { app.exportSelected() }
                     Button("Export ZIP…") { app.exportSelected(asZIP: true) }
                     Button("Export for Codex…") { app.exportSelectedForCodex() }
                 } label: { Label("Share", systemImage: "square.and.arrow.up") }.menuStyle(.borderlessButton).fixedSize()

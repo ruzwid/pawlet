@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.6.0
+
+- Give light mode a paper-and-olive palette inspired by the supplied Granola reference.
+- Replace the system settings form with themed sections and switches with distinct on/off colours and native accessibility semantics.
+- Add Show all minis / Hide all minis to the sidebar, preserving the selected preview and individual settings.
+- Remove the six-window cap so Show all covers the complete library.
+- Use Minis throughout application copy, menus and errors while retaining compatible pack extensions, paths and metadata keys.
+
 ## 0.5.2
 
 - Redraw the paw with plump toe beans and a soft rounded pad; use it across the app, sidebar and menu bar.

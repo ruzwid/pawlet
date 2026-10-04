@@ -31,7 +31,7 @@ final class SpriteAtlas {
               let height = properties[kCGImagePropertyPixelHeight] as? Int,
               width == 1536, [1872, 2288].contains(height),
               let image = CGImageSourceCreateImageAtIndex(source, 0, nil) else {
-            throw AtlasError.invalid("Use a transparent PNG sprite sheet measuring 1536 × 2288 (v2), or 1536 × 1872 (v1). A regular photo or GIF isn't a complete pet.")
+            throw AtlasError.invalid("Use a transparent PNG sprite sheet measuring 1536 × 2288 (v2), or 1536 × 1872 (v1). A regular photo or GIF isn't a complete mini.")
         }
         guard [.first, .last, .premultipliedFirst, .premultipliedLast].contains(image.alphaInfo) else {
             throw AtlasError.invalid("The sprite sheet needs a transparent background.")

@@ -208,7 +208,7 @@ final class DesktopPet: NSObject {
             menu.addItem(item)
         }
         menu.addItem(.separator())
-        let settings = NSMenuItem(title: "Pet controls…", action: #selector(AppDelegate.showControls), keyEquivalent: "")
+        let settings = NSMenuItem(title: "Mini controls…", action: #selector(AppDelegate.showControls), keyEquivalent: "")
         settings.target = owner; menu.addItem(settings)
         let hide = NSMenuItem(title: "Hide \(atlas.name)", action: #selector(hidePet), keyEquivalent: "")
         hide.target = self; menu.addItem(hide)

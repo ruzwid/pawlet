@@ -39,10 +39,10 @@ extension PetState {
         case .runningRight: return "A right-facing gait, played in place."
         case .runningLeft: return "A left-facing gait, played in place."
         case .waving: return "A friendly hello."
-        case .jumping: return "A playful hop. Some pets bounce toward you."
+        case .jumping: return "A playful hop. Some minis bounce toward you."
         case .failed: return "A little reaction when things go wrong."
         case .waiting: return "Patiently keeping you company."
-        case .working: return "The active-work animation; artwork varies by pet."
+        case .working: return "The active-work animation; artwork varies by mini."
         case .review: return "Thinking it over."
         }
     }

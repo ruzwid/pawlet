@@ -14,7 +14,7 @@ struct CreatePetView: View {
         VStack(alignment: .leading, spacing: 22) {
             HStack {
                 VStack(alignment: .leading, spacing: 5) {
-                    Text("Make a new companion").font(.system(size: 25, weight: .bold, design: .rounded))
+                    Text("Make a new mini").font(.system(size: 25, weight: .bold, design: .rounded))
                     Text("Bring an idea or a reference image. Codex handles the artwork.").foregroundStyle(.secondary)
                 }; Spacer()
             }
@@ -22,13 +22,13 @@ struct CreatePetView: View {
                 Image(systemName: "sparkles").font(.system(size: 24)).foregroundStyle(petAccent)
                     .frame(width: 54, height: 54).background(petAccent.opacity(0.10), in: RoundedRectangle(cornerRadius: 16)).accessibilityHidden(true)
                 VStack(alignment: .leading, spacing: 5) {
-                    Text("An idea becomes a companion.").font(.system(size: 14, weight: .semibold))
+                    Text("An idea becomes a mini.").font(.system(size: 14, weight: .semibold))
                     Text("A tiny character with a personality of its own.").font(.callout).foregroundStyle(PawletTheme.secondary)
                 }
             }.padding(16).frame(maxWidth: .infinity, alignment: .leading).background(PawletTheme.stage, in: RoundedRectangle(cornerRadius: 18))
             VStack(alignment: .leading, spacing: 7) {
                 Text("Name").font(.callout.weight(.semibold))
-                TextField("What shall we call them?", text: $name).textFieldStyle(.roundedBorder).accessibilityLabel("Pet name")
+                TextField("What shall we call them?", text: $name).textFieldStyle(.roundedBorder).accessibilityLabel("Mini name")
             }
             VStack(alignment: .leading, spacing: 6) {
                 Text("What should it look like?").font(.callout.weight(.semibold))
@@ -41,7 +41,7 @@ struct CreatePetView: View {
                 Button(reference == nil ? "Add reference image…" : "Change image…") { chooseReference() }
             }
             if let reference = reference { Label(reference.lastPathComponent, systemImage: "photo").font(.caption).foregroundStyle(.secondary) }
-            Text("Opens a new Codex chat with the skill and prompt ready. Review it and press Send to begin. Image creation needs Codex and the Pets plugin; your existing pets keep running independently.")
+            Text("Opens a new Codex chat with the skill and prompt ready. Review it and press Send to begin. Image creation needs Codex and its image-creation plugin; your existing minis keep running independently.")
                 .font(.callout).foregroundStyle(.secondary)
             if let error = error { Text(error).foregroundStyle(.red).font(.callout) }
             HStack {
@@ -92,11 +92,11 @@ enum CreationHandoff {
             : "Use the requested visual style: \(style)."
         try JSONSerialization.data(withJSONObject: brief, options: [.prettyPrinted, .sortedKeys]).write(to: workspace.appendingPathComponent("request.json"))
         let prompt = """
-        [@Pets](plugin://work-pets@openai-curated-remote) Use $create-desktop-pet from \(skill.path)/SKILL.md to create a standalone Pawlet companion.
+        [@Pets](plugin://work-pets@openai-curated-remote) Use $create-desktop-pet from \(skill.path)/SKILL.md to create a standalone Pawlet mini.
         Read request.json in this workspace. Name: \(name). Character idea: \(idea)
         \(styleInstruction)
         \(referenceNote)
-        Follow the installed Pets create-pet artwork workflow through final validated local sprite sheet and motion previews. Do not upload to ChatGPT, create a hosted pet, or select a ChatGPT pet.
+        Follow the installed image-creation plugin’s create-pet artwork workflow through final validated local sprite sheet and motion previews. Do not upload to ChatGPT, create a hosted mini, or select a ChatGPT companion.
         Package the final exact atlas using the local create-desktop-pet skill's scripts/package_pet.py. Save the .petpack in \(output.path).
         Show the motion preview and final .petpack path so I can import it in Pawlet. Stop if image generation or the required artwork pipeline is unavailable.
         """
