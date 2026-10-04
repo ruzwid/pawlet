@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.6.4
+
+- Use neutral charcoal backgrounds and grey hover/selection fills in dark mode, reserving olive for accents.
+- Remove the extra On desktop / Hidden labels from mini cards; retain distinct Hide / Show controls.
+
 ## 0.6.3
 
 - Keep mini names and their background unchanged during hover; highlight only the outer card border.

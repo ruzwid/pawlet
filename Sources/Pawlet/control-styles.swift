@@ -34,7 +34,7 @@ struct ControlSurface: ViewModifier {
             .background {
                 ZStack {
                     PawletTheme.roundedShape(radius).fill(background)
-                    PawletTheme.roundedShape(radius).fill(prominent ? Color.black.opacity(0.08) : PawletTheme.accent.opacity(0.11))
+                    PawletTheme.roundedShape(radius).fill(prominent ? Color.black.opacity(0.08) : PawletTheme.controlHighlight.opacity(0.11))
                         .opacity(selected || isEnabled && (isHovered || isPressed) ? 1 : 0)
                         .animation(reduceMotion || selected || isPressed ? nil : InterfaceMotion.hoverFeedback, value: isHovered)
                 }.allowsHitTesting(false)
