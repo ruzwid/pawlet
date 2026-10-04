@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.6.3
+
+- Keep mini names and their background unchanged during hover; highlight only the outer card border.
+- Show persistent On desktop / Hidden status, with filled Hide and outlined Show controls.
+- Use one shared tint for hover, selection and press, without stacked overlays.
+- Adapt the light theme's olive greens to dark mode with warm charcoal surfaces.
+
 ## 0.6.2
 
 - Inset each mini’s rounded artwork stage inside its card.

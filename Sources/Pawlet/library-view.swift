@@ -11,6 +11,7 @@ struct LibraryView: View {
     @State private var removing = false
     @State private var formatHelp = false
     @State private var search = ""
+    @State private var hoveredMiniID: String?
     @FocusState private var searchFocused: Bool
 
     var body: some View {
@@ -151,18 +152,28 @@ struct LibraryView: View {
                         .frame(height: 132).frame(maxWidth: .infinity).padding(.vertical, 8)
                         .background(PawletTheme.stage, in: PawletTheme.roundedShape(10))
                         .clipShape(PawletTheme.roundedShape(10))
-                    Text(pet.manifest.name).font(.system(size: 14, weight: .semibold, design: .rounded))
-                        .lineLimit(1).padding(.horizontal, 4).padding(.bottom, 2)
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text(pet.manifest.name).font(.system(size: 14, weight: .semibold, design: .rounded))
+                            .foregroundStyle(PawletTheme.ink).lineLimit(1)
+                        Label(visible ? "On desktop" : "Hidden", systemImage: visible ? "desktopcomputer" : "eye.slash")
+                            .font(.system(size: 10, weight: .medium))
+                            .foregroundStyle(visible ? petAccent : PawletTheme.secondary)
+                    }.padding(.horizontal, 4).padding(.bottom, 2)
                 }.frame(maxWidth: .infinity, alignment: .leading).contentShape(Rectangle())
-            }.buttonStyle(PawletPlainStyle(radius: 10)).accessibilityLabel("Select \(pet.manifest.name)")
+            }.buttonStyle(.plain).accessibilityLabel("Select \(pet.manifest.name)")
+                .accessibilityValue(visible ? "On desktop" : "Hidden")
                 .accessibilityAddTraits(selected ? .isSelected : []).accessibilityRemoveTraits(selected ? [] : .isSelected)
             Button { app.togglePetVisibility(pet.id) } label: {
                 Label(visible ? "Hide mini" : "Show mini", systemImage: visible ? "eye.slash" : "eye")
-            }.buttonStyle(PawletActionStyle(compact: true, fillsWidth: true))
+            }.buttonStyle(PawletActionStyle(prominent: visible, compact: true, fillsWidth: true))
                 .accessibilityLabel("\(visible ? "Hide" : "Show") \(pet.manifest.name) on desktop")
                 .help("Show or hide \(pet.manifest.name) with one click; keep the current preview selected.")
         }.padding(8).background(PawletTheme.surface, in: PawletTheme.roundedShape(18))
-            .overlay(PawletTheme.roundedShape(18).strokeBorder(selected ? petAccent : PawletTheme.border, lineWidth: selected ? 1.5 : 1).allowsHitTesting(false))
+            .overlay(PawletTheme.roundedShape(18).strokeBorder(selected || hoveredMiniID == pet.id ? petAccent : PawletTheme.border, lineWidth: selected || hoveredMiniID == pet.id ? 1.5 : 1).allowsHitTesting(false))
+            .onHover { hovering in
+                if hovering { hoveredMiniID = pet.id }
+                else if hoveredMiniID == pet.id { hoveredMiniID = nil }
+            }.onDisappear { if hoveredMiniID == pet.id { hoveredMiniID = nil } }
     }
 
     private var settingsPage: some View { SettingsView(app: app) }
@@ -177,7 +188,7 @@ struct LibraryView: View {
             Text("The app works without Codex. Codex is only used when you choose to create new artwork.")
             Text("No accounts, telemetry or network listener. Imported minis are image and metadata files; they don't run code.").font(.callout).foregroundStyle(.secondary)
             Button("Learn about mini packs") { formatHelp = true }.buttonStyle(PawletActionStyle())
-            Text("Version 0.6.2 · macOS 13+").font(.caption).foregroundStyle(.secondary)
+            Text("Version 0.6.3 · macOS 13+").font(.caption).foregroundStyle(.secondary)
             Spacer()
         }.padding(36).frame(maxWidth: .infinity, alignment: .leading)
     }

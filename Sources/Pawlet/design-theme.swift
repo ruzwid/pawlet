@@ -2,19 +2,20 @@ import SwiftUI
 import AppKit
 
 enum PawletTheme {
-    static let canvas = color(light: 0xF8F8F2, dark: 0x1C1E1D)
-    static let surface = color(light: 0xFFFFFB, dark: 0x292C2A)
-    static let stage = color(light: 0xF0F1E6, dark: 0x30362F)
-    static let secondary = color(light: 0x66685D, dark: 0xBAC2BA)
-    static let border = color(light: 0xDDDED4, dark: 0x444A44)
-    static let accent = color(light: 0x627000, dark: 0xA8D4BD)
-    static let button = color(light: 0x627000, dark: 0x345D4E)
-    static let ink = color(light: 0x292A25, dark: 0xECEEE7)
-    static let sidebar = color(light: 0xF1F2E9, dark: 0x202320)
-    static let switchOff = color(light: 0xE2E4D8, dark: 0x3D443D)
-    static let switchBorder = color(light: 0x7A7D73, dark: 0x829083)
-    static let switchThumbOn = color(light: 0xFFFFFB, dark: 0x1C1E1D)
-    static let switchThumbOff = color(light: 0x73766A, dark: 0xC3CBC2)
+    static let canvas = color(light: 0xF8F8F2, dark: 0x1E2018)
+    static let surface = color(light: 0xFFFFFB, dark: 0x282B20)
+    static let stage = color(light: 0xF0F1E6, dark: 0x303426)
+    static let secondary = color(light: 0x66685D, dark: 0xBBC0A8)
+    static let border = color(light: 0xDDDED4, dark: 0x484E39)
+    static let accent = color(light: 0x627000, dark: 0xCCD889)
+    static let button = color(light: 0x627000, dark: 0xBBC96A)
+    static let buttonInk = color(light: 0xFFFFFB, dark: 0x232715)
+    static let ink = color(light: 0x292A25, dark: 0xF0F1E7)
+    static let sidebar = color(light: 0xF1F2E9, dark: 0x23261C)
+    static let switchOff = color(light: 0xE2E4D8, dark: 0x3A402E)
+    static let switchBorder = color(light: 0x7A7D73, dark: 0x89916B)
+    static let switchThumbOn = color(light: 0xFFFFFB, dark: 0x1E2018)
+    static let switchThumbOff = color(light: 0x73766A, dark: 0xB8BEA4)
     static func roundedShape(_ radius: CGFloat) -> RoundedRectangle {
         RoundedRectangle(cornerRadius: radius, style: .continuous)
     }

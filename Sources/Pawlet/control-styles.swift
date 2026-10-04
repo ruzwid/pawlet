@@ -17,14 +17,14 @@ struct ControlSurface: ViewModifier {
     var isPressed = false
 
     private var foregroundColor: Color {
-        if prominent { return .white }
-        if isHovered && isEnabled { return PawletTheme.accent }
+        if prominent { return PawletTheme.buttonInk }
+        if selected || isEnabled && (isHovered || isPressed) { return PawletTheme.accent }
         return foreground
     }
     private var borderColor: Color {
         guard bordered else { return .clear }
         if prominent { return PawletTheme.button }
-        if selected || isHovered && isEnabled { return PawletTheme.accent.opacity(0.55) }
+        if selected || isEnabled && (isHovered || isPressed) { return PawletTheme.accent.opacity(0.55) }
         return PawletTheme.border
     }
 
@@ -33,12 +33,10 @@ struct ControlSurface: ViewModifier {
             .foregroundStyle(foregroundColor)
             .background {
                 ZStack {
-                    PawletTheme.roundedShape(radius).fill(selected ? PawletTheme.accent.opacity(0.11) : background)
-                    PawletTheme.roundedShape(radius).fill(prominent ? Color.white.opacity(0.10) : PawletTheme.accent.opacity(0.09))
-                        .opacity(isHovered && isEnabled ? 1 : 0)
-                        .animation(reduceMotion ? nil : InterfaceMotion.hoverFeedback, value: isHovered)
-                    PawletTheme.roundedShape(radius).fill(prominent ? Color.black.opacity(0.13) : PawletTheme.accent.opacity(0.15))
-                        .opacity(isPressed && isEnabled ? 1 : 0)
+                    PawletTheme.roundedShape(radius).fill(background)
+                    PawletTheme.roundedShape(radius).fill(prominent ? Color.black.opacity(0.08) : PawletTheme.accent.opacity(0.11))
+                        .opacity(selected || isEnabled && (isHovered || isPressed) ? 1 : 0)
+                        .animation(reduceMotion || selected || isPressed ? nil : InterfaceMotion.hoverFeedback, value: isHovered)
                 }.allowsHitTesting(false)
             }
             .overlay {
@@ -69,13 +67,13 @@ struct PawletFieldBorder: ViewModifier {
 
     private var borderColor: Color {
         if focused { return PawletTheme.accent }
-        if isHovered { return PawletTheme.accent.opacity(0.55) }
+        if isHovered { return PawletTheme.accent }
         return PawletTheme.border
     }
 
     func body(content: Content) -> some View {
         content.background(PawletTheme.surface, in: PawletTheme.roundedShape(10))
-            .overlay(PawletTheme.roundedShape(10).strokeBorder(borderColor, lineWidth: focused ? 1.5 : 1).allowsHitTesting(false))
+            .overlay(PawletTheme.roundedShape(10).strokeBorder(borderColor, lineWidth: focused || isHovered ? 1.5 : 1).allowsHitTesting(false))
             .onHover { isHovered = $0 }
     }
 }
