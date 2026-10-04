@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.4.1
+
+- Import Finder-created Codex ZIPs while ignoring __MACOSX and .DS_Store metadata.
+- Read only playable atlas cells, allowing existing pets with extra unused poses.
+- Preserve source pixels and keep required-frame, image, hash and archive-safety checks.
+
 ## 0.4.0
 
 - Remove hover cooldowns: each pointer re-entry can wave independently of loop intervals.

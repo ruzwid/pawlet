@@ -31,6 +31,26 @@ enum TransferTests {
         let zipLibrary = try PetLibrary(root: scratch.appendingPathComponent("zip-library"))
         let fromZIP = try zipLibrary.importFile(sharedZIP)
         try ProjectTests.require(fromZIP.manifest == imported.manifest, "Wrapped Codex ZIP metadata")
+        let finderMetadata = scratch.appendingPathComponent("__MACOSX/codex-fixture", isDirectory: true)
+        try FileManager.default.createDirectory(at: finderMetadata, withIntermediateDirectories: true)
+        for name in ["._pet.json", "._spritesheet.png", "._README.md"] {
+            try Data("Finder metadata".utf8).write(to: finderMetadata.appendingPathComponent(name))
+        }
+        try Data("Finder folder metadata".utf8).write(to: finderMetadata.deletingLastPathComponent().appendingPathComponent("._codex-fixture"))
+        try Data("Finder layout".utf8).write(to: folder.appendingPathComponent(".DS_Store"))
+        let finderZIP = scratch.appendingPathComponent("finder.zip")
+        try zip(["codex-fixture/", "__MACOSX/"], in: scratch, to: finderZIP, flags: ["-r"])
+        let finderLibrary = try PetLibrary(root: scratch.appendingPathComponent("finder-library"))
+        let fromFinderZIP = try finderLibrary.importFile(finderZIP)
+        try ProjectTests.require(fromFinderZIP.manifest == imported.manifest, "Finder metadata interfered with pet import")
+        try ProjectTests.require(!FileManager.default.fileExists(atPath: fromFinderZIP.directory.appendingPathComponent(".DS_Store").path), "Finder metadata must not enter the library")
+        var unsafeFinderZIP = try Data(contentsOf: finderZIP)
+        let safePath = Data("__MACOSX/._codex-fixture".utf8)
+        let unsafePath = Data("__MACOSX/../evil-scriptx".utf8)
+        try ProjectTests.require(safePath.count == unsafePath.count, "Traversal fixture path size")
+        if let range = unsafeFinderZIP.range(of: safePath, options: .backwards) { unsafeFinderZIP.replaceSubrange(range, with: unsafePath) }
+        try ProjectTests.reject("Finder metadata traversal") { _ = try PetArchive.inspect(unsafeFinderZIP, allowCodex: true) }
+        try FileManager.default.removeItem(at: folder.appendingPathComponent(".DS_Store"))
         let flatZIP = scratch.appendingPathComponent("flat-codex.zip")
         try zip(["pet.json", "spritesheet.png"], in: folder, to: flatZIP)
         let flatLibrary = try PetLibrary(root: scratch.appendingPathComponent("flat-library"))

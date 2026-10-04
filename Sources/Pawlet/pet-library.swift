@@ -159,6 +159,18 @@ enum PetArchive {
     static let allowed = Set(["manifest.json", "spritesheet.png", "preview.png"])
     static let compatibleAllowed = allowed.union(["pet.json", "spritesheet.webp", "README.md"])
 
+    static func isFinderMetadata(_ path: String) -> Bool {
+        let isDirectory = path.hasSuffix("/")
+        let components = path.split(separator: "/", omittingEmptySubsequences: false).map(String.init)
+        let names = isDirectory ? Array(components.dropLast()) : components
+        let allowedCharacters = CharacterSet(charactersIn: "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-_. ")
+        guard !names.isEmpty, names.count <= 3,
+              names.allSatisfy({ !$0.isEmpty && $0 != "." && $0 != ".." && $0.unicodeScalars.allSatisfy { allowedCharacters.contains($0) } }) else { return false }
+        if !isDirectory, names.count <= 2, names.last == ".DS_Store" { return true }
+        guard names.first == "__MACOSX" else { return false }
+        return isDirectory ? names.count <= 2 : names.count >= 2 && names.last!.hasPrefix("._")
+    }
+
     static func inspect(_ data: Data, allowCodex: Bool = false) throws -> [Entry] {
         guard data.count >= 22, data.count <= TransferConstants.MAX_ARCHIVE_BYTES else { throw PetLibraryError.invalid("Pet packs must be ZIP files under 25 MB.") }
         func u16(_ offset: Int) -> Int { Int(data[offset]) | Int(data[offset + 1]) << 8 }
@@ -167,7 +179,7 @@ enum PetArchive {
         for index in stride(from: data.count - 22, through: max(0, data.count - 65_557), by: -1) {
             if u32(index) == 0x06054b50, index + 22 + u16(index + 20) == data.count { end = index; break }
         }
-        let entryRange = allowCodex ? 2...7 : 2...3
+        let entryRange = allowCodex ? 2...TransferConstants.MAX_COMPATIBLE_ZIP_ENTRIES : 2...3
         guard let end = end, u16(end + 4) == 0, u16(end + 6) == 0,
               u16(end + 8) == u16(end + 10), entryRange.contains(u16(end + 10)) else {
             throw PetLibraryError.invalid("Choose a .petpack, or a ZIP containing one pet folder with metadata and its sprite sheet.")
@@ -187,14 +199,15 @@ enum PetArchive {
             }
             let components = path.split(separator: "/", omittingEmptySubsequences: false).map(String.init)
             let isDirectory = path.hasSuffix("/")
+            let mode = (u32(offset + 38) >> 16) & 0o170000
+            guard mode == 0 || mode == (isDirectory ? 0o040000 : 0o100000) else { throw PetLibraryError.invalid("Archive links and special files are not supported.") }
+            if allowCodex && isFinderMetadata(path) { offset = next; continue }
             let hasFolder = components.count == 2
             guard components.count == 1 || (allowCodex && hasFolder),
                   !hasFolder || (!components[0].isEmpty && components[0].unicodeScalars.allSatisfy { folderCharacters.contains($0) }),
                   !isDirectory || (allowCodex && hasFolder) else {
                 throw PetLibraryError.invalid("ZIPs may contain one flat pet or one pet folder. Nested paths and multiple pets are not supported.")
             }
-            let mode = (u32(offset + 38) >> 16) & 0o170000
-            guard mode == 0 || mode == (isDirectory ? 0o040000 : 0o100000) else { throw PetLibraryError.invalid("Archive links and special files are not supported.") }
             let size = Int(u32(offset + 24))
             if isDirectory {
                 guard size == 0 else { throw PetLibraryError.invalid("Invalid ZIP folder entry.") }

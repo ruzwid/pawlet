@@ -48,7 +48,7 @@ final class SpriteAtlas {
         if let expected = manifest.artworkSHA256, hash != expected.lowercased() { throw AtlasError.invalid("The artwork hash doesn't match. The file may be damaged.") }
         let counts = [6, 8, 8, 4, 5, 8, 6, 6, 6] + (hasLookDirections ? [8, 8] : [])
         for (row, count) in counts.enumerated() {
-            for column in 0..<8 {
+            for column in 0..<count {
                 let rect = CGRect(x: column * 192, y: row * 208, width: 192, height: 208)
                 guard let cell = image.cropping(to: rect) else { throw AtlasError.invalid("Missing frame.") }
                 var rgba = [UInt8](repeating: 0, count: 192 * 208 * 4)
@@ -60,10 +60,6 @@ final class SpriteAtlas {
                 }
                 let alpha = stride(from: 3, to: rgba.count, by: 4).map { rgba[$0] }
                 let visible = alpha.contains { $0 > 0 }
-                if column >= count {
-                    guard !visible else { throw AtlasError.invalid("Unused cell in row \(row) isn't transparent.") }
-                    continue
-                }
                 guard visible else { throw AtlasError.invalid("Row \(row), frame \(column) is empty.") }
                 // Fully opaque cells usually indicate a background panel left behind.
                 guard alpha.contains(0) else { throw AtlasError.invalid("Row \(row), frame \(column) has an opaque background.") }

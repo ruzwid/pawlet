@@ -222,7 +222,7 @@ struct LibraryView: View {
             Text("The app works without Codex. Codex is only used when you choose to create new artwork.")
             Text("No accounts, telemetry or network listener. Imported pets are image and metadata files; they don't run code.").font(.callout).foregroundStyle(.secondary)
             Button("Learn about pet packs") { formatHelp = true }
-            Text("Version 0.4.0 · macOS 13+").font(.caption).foregroundStyle(.secondary)
+            Text("Version 0.4.1 · macOS 13+").font(.caption).foregroundStyle(.secondary)
             Spacer()
         }.padding(36).frame(maxWidth: .infinity, alignment: .leading)
     }

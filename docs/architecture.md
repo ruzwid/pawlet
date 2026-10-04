@@ -16,7 +16,7 @@ The app keeps artwork, behavior and creation separate. Adding a character uses t
 
 ## Storage and lifetime
 
-Codex pet folders/ZIPs are normalized into a validated library snapshot. Only known data files are read; README contents are never executed. PNGs are preserved exactly; WebP imports are decoded into the internal PNG format. A compatible ZIP has a single optional folder prefix; traversal, duplicate basenames, links and encrypted entries are rejected before bounded streaming. Canonical `.petpack` exports retain their original flat schema.
+Codex pet folders/ZIPs are normalized into a validated library snapshot. Only known data files are read; README contents are never executed. PNGs are preserved exactly; WebP imports are decoded into the internal PNG format. A compatible ZIP has a single optional folder prefix; traversal, duplicate basenames, links and encrypted entries are rejected before bounded streaming. Known Finder sidecars are skipped without being extracted or read; the runtime frame cache ignores unused cells while retaining the original image. Authoring validation continues to require transparent unused cells. Canonical `.petpack` exports retain their original flat schema.
 
 Library folders live in `~/Library/Application Support/Pawlet/Library/<id>/`. Each stores `manifest.json` and the original `spritesheet.png`. Preferences, visibility and screen positions use UserDefaults under the app's bundle ID. Creation workspaces live separately beside the Library folder; deleting a runtime pet does not erase its generation sources.
 

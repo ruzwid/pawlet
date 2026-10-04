@@ -22,6 +22,7 @@ enum TransferConstants {
     static let MAX_METADATA_BYTES = 65_536
     static let MAX_IMAGE_BYTES = 20 * 1024 * 1024
     static let MAX_ARCHIVE_BYTES = 25 * 1024 * 1024
+    static let MAX_COMPATIBLE_ZIP_ENTRIES = 32
 }
 
 enum CodexPetTransfer {
