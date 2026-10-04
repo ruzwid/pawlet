@@ -13,7 +13,7 @@ struct SettingsView: View {
                         Spacer()
                         Picker("Default hover reaction", selection: $app.settings.hoverReaction) {
                             ForEach(HoverReaction.allCases, id: \.rawValue) { reaction in Text(reaction.title).tag(reaction) }
-                        }.labelsHidden().fixedSize().disabled(!app.settings.greetOnHover)
+                        }.modifier(PawletMenuStyle()).labelsHidden().fixedSize().disabled(!app.settings.greetOnHover)
                     }
                     hint("Each mini can have its own reaction. Hover plays once and ignores the time between animations.")
                     Divider()
@@ -54,7 +54,7 @@ struct SettingsView: View {
                         Spacer()
                         Picker("Appearance", selection: $app.settings.appearance) {
                             Text("System").tag("system"); Text("Light").tag("light"); Text("Dark").tag("dark")
-                        }.labelsHidden().fixedSize()
+                        }.modifier(PawletMenuStyle()).labelsHidden().fixedSize()
                     }
                     Divider()
                     HStack(spacing: 10) {
@@ -72,8 +72,8 @@ struct SettingsView: View {
             Text(title).font(.system(size: 13, weight: .semibold)).padding(.leading, 2)
             VStack(alignment: .leading, spacing: 14, content: content)
                 .padding(16).frame(maxWidth: .infinity, alignment: .leading)
-                .background(PawletTheme.surface, in: RoundedRectangle(cornerRadius: 14))
-                .overlay(RoundedRectangle(cornerRadius: 14).stroke(PawletTheme.border))
+                .background(PawletTheme.surface, in: PawletTheme.roundedShape(14))
+                .overlay(PawletTheme.roundedShape(14).stroke(PawletTheme.border))
         }
     }
     private func hint(_ text: String) -> some View {
@@ -89,9 +89,9 @@ struct PawletToggleStyle: ToggleStyle {
             HStack(spacing: 16) {
                 configuration.label
                 Spacer(minLength: 12)
-                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                PawletTheme.roundedShape(12)
                     .fill(configuration.isOn ? PawletTheme.accent : PawletTheme.switchOff).frame(width: 40, height: 24)
-                    .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous).strokeBorder(configuration.isOn ? .clear : PawletTheme.switchBorder))
+                    .overlay(PawletTheme.roundedShape(12).strokeBorder(configuration.isOn ? .clear : PawletTheme.switchBorder))
                     .overlay(alignment: configuration.isOn ? .trailing : .leading) {
                         Circle().fill(configuration.isOn ? PawletTheme.switchThumbOn : PawletTheme.switchThumbOff)
                             .frame(width: 18, height: 18).padding(3)

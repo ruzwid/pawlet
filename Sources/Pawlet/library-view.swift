@@ -45,7 +45,7 @@ struct LibraryView: View {
         VStack(alignment: .leading, spacing: 22) {
             HStack(spacing: 10) {
                 Image(nsImage: app.pawImage).resizable().renderingMode(.template).scaledToFit().frame(width: 23, height: 23)
-                    .foregroundStyle(petAccent).padding(8).background(petAccent.opacity(0.10), in: RoundedRectangle(cornerRadius: 12)).accessibilityHidden(true)
+                    .foregroundStyle(petAccent).padding(8).background(petAccent.opacity(0.10), in: PawletTheme.roundedShape(12)).accessibilityHidden(true)
                 Text("Pawlet").font(.system(size: 22, weight: .bold, design: .rounded))
             }.padding(.top, 8)
             VStack(alignment: .leading, spacing: 6) {
@@ -66,7 +66,7 @@ struct LibraryView: View {
                     Label(app.settings.paused ? "Resume minis" : "Pause minis", systemImage: app.settings.paused ? "play" : "pause")
                         .font(.system(size: 11, weight: .medium)).frame(maxWidth: .infinity, alignment: .leading)
                 }.buttonStyle(PawletActionStyle(compact: true)).help("Pause or resume desktop animations")
-            }.padding(10).background(PawletTheme.surface.opacity(0.7), in: RoundedRectangle(cornerRadius: 12))
+            }.padding(10).background(PawletTheme.surface.opacity(0.7), in: PawletTheme.roundedShape(12))
         }.padding(10).frame(width: 156).frame(maxHeight: .infinity).background(PawletTheme.sidebar)
     }
     private func navigation(_ id: String, title: String, symbol: String) -> some View {
@@ -81,7 +81,7 @@ struct LibraryView: View {
             }.font(.system(size: 13, weight: app.section == id ? .semibold : .medium))
                 .frame(maxWidth: .infinity, alignment: .leading).padding(.horizontal, 10).padding(.vertical, 9)
                 .foregroundStyle(app.section == id ? petAccent : PawletTheme.ink)
-                .background(app.section == id ? petAccent.opacity(0.11) : .clear, in: RoundedRectangle(cornerRadius: 10))
+                .background(app.section == id ? petAccent.opacity(0.11) : .clear, in: PawletTheme.roundedShape(10))
         }.buttonStyle(.plain).accessibilityAddTraits(app.section == id ? .isSelected : []).accessibilityRemoveTraits(app.section == id ? [] : .isSelected)
     }
 
@@ -117,8 +117,8 @@ struct LibraryView: View {
                             if !search.isEmpty {
                                 Button { search = "" } label: { Image(systemName: "xmark.circle.fill") }.buttonStyle(.borderless).accessibilityLabel("Clear search")
                             }
-                        }.padding(10).background(PawletTheme.surface, in: RoundedRectangle(cornerRadius: 10))
-                            .overlay(RoundedRectangle(cornerRadius: 10).stroke(PawletTheme.border))
+                        }.padding(10).background(PawletTheme.surface, in: PawletTheme.roundedShape(10))
+                            .overlay(PawletTheme.roundedShape(10).stroke(PawletTheme.border))
                         ScrollView {
                             if filteredPets.isEmpty {
                                 Text("No minis found.").font(.callout).foregroundStyle(PawletTheme.secondary).padding(.top, 40)
@@ -161,12 +161,12 @@ struct LibraryView: View {
                 Label(visible ? "Hide mini" : "Show mini", systemImage: visible ? "eye.slash" : "plus.circle")
                     .font(.system(size: 11, weight: .medium)).frame(maxWidth: .infinity).frame(height: 28)
                     .foregroundStyle(visible ? petAccent : PawletTheme.ink)
-                    .background(visible ? petAccent.opacity(0.10) : PawletTheme.canvas, in: RoundedRectangle(cornerRadius: 8))
+                    .background(visible ? petAccent.opacity(0.10) : PawletTheme.canvas, in: PawletTheme.roundedShape(8))
             }.buttonStyle(.plain).accessibilityLabel("\(visible ? "Hide" : "Show") \(pet.manifest.name) on desktop")
                 .help("Show or hide \(pet.manifest.name) with one click; keep the current preview selected.")
                 .padding(.horizontal, 10).padding(.bottom, 10)
-        }.background(PawletTheme.surface).clipShape(RoundedRectangle(cornerRadius: 14))
-            .overlay(RoundedRectangle(cornerRadius: 14).stroke(selected ? petAccent : PawletTheme.border, lineWidth: selected ? 1.5 : 1))
+        }.background(PawletTheme.surface).clipShape(PawletTheme.roundedShape(14))
+            .overlay(PawletTheme.roundedShape(14).stroke(selected ? petAccent : PawletTheme.border, lineWidth: selected ? 1.5 : 1))
     }
 
     private var settingsPage: some View { SettingsView(app: app) }
@@ -180,8 +180,8 @@ struct LibraryView: View {
             Divider()
             Text("The app works without Codex. Codex is only used when you choose to create new artwork.")
             Text("No accounts, telemetry or network listener. Imported minis are image and metadata files; they don't run code.").font(.callout).foregroundStyle(.secondary)
-            Button("Learn about mini packs") { formatHelp = true }
-            Text("Version 0.6.0 · macOS 13+").font(.caption).foregroundStyle(.secondary)
+            Button("Learn about mini packs") { formatHelp = true }.buttonStyle(PawletActionStyle())
+            Text("Version 0.6.1 · macOS 13+").font(.caption).foregroundStyle(.secondary)
             Spacer()
         }.padding(36).frame(maxWidth: .infinity, alignment: .leading)
     }
@@ -191,12 +191,12 @@ struct LibraryView: View {
             Text("A mini in one file").font(.title.weight(.bold))
             Text("A .petpack is a ZIP with two files at its root:")
             Text("manifest.json\nspritesheet.png").font(.system(.body, design: .monospaced)).padding(16)
-                .frame(maxWidth: .infinity, alignment: .leading).background(.quaternary, in: RoundedRectangle(cornerRadius: 10))
+                .frame(maxWidth: .infinity, alignment: .leading).background(.quaternary, in: PawletTheme.roundedShape(10))
             Text("The JSON names the mini and its sprite format. The transparent PNG holds every pose in a fixed grid. Preview images are optional.")
             Text("Import also accepts a Codex mini folder or ZIP with pet.json and its sprite sheet. Use Share → Export for Codex to save the same artwork in that format, or use the folder button at the top of the library to browse all your minis.").font(.callout)
             Text("v2: 1536 × 2288, 192 × 208 cells, 9 animations + 16 gaze poses.\nv1: 1536 × 1872, 9 animations without gaze tracking.").font(.callout).foregroundStyle(.secondary)
             Text("A regular photo is a creation reference, not an animated mini. Use Create to turn it into one.").font(.callout)
-            HStack { Spacer(); Button("Got it") { formatHelp = false }.keyboardShortcut(.defaultAction) }
+            HStack { Spacer(); Button("Got it") { formatHelp = false }.buttonStyle(PawletActionStyle(prominent: true)).keyboardShortcut(.defaultAction) }
         }.padding(28).frame(width: 470)
     }
 }

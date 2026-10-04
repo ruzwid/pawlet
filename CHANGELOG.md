@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.6.1
+
+- Use continuous squircle-style corners for cards, panels, buttons, search, animation chips and switches.
+- Give creation fields and dropdowns matching themed borders while retaining native editing and menu accessibility.
+
 ## 0.6.0
 
 - Give light mode a paper-and-olive palette inspired by the supplied Granola reference.

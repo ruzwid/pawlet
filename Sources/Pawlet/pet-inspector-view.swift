@@ -29,7 +29,7 @@ struct PetInspectorView: View {
                 Picker("On hover", selection: Binding(get: { app.hoverOverride(for: pet.id)?.rawValue ?? "default" }, set: { app.setHoverOverride(HoverReaction(rawValue: $0), for: pet.id) })) {
                     Text("Default (\(app.settings.hoverReaction.title))").tag("default")
                     ForEach(HoverReaction.allCases, id: \.rawValue) { reaction in Text(reaction.title).tag(reaction.rawValue) }
-                }.labelsHidden().font(.callout).fixedSize().disabled(!app.settings.greetOnHover)
+                }.modifier(PawletMenuStyle()).labelsHidden().font(.callout).fixedSize().disabled(!app.settings.greetOnHover)
                     .help("Choose this mini's greeting, or follow the default in Settings. Each entry plays once without a cooldown.")
             }.padding(.vertical, 2)
             if !app.settings.greetOnHover { Text("Hover reactions are off in Settings.").font(.caption).foregroundStyle(PawletTheme.secondary) }
@@ -53,8 +53,8 @@ struct PetInspectorView: View {
                 } label: { Label("Share", systemImage: "square.and.arrow.up") }.menuStyle(.borderlessButton).fixedSize()
             }
         }.padding(16)
-        .background(PawletTheme.surface.opacity(0.55), in: RoundedRectangle(cornerRadius: 18))
-        .overlay(RoundedRectangle(cornerRadius: 18).stroke(PawletTheme.border))
+        .background(PawletTheme.surface.opacity(0.55), in: PawletTheme.roundedShape(18))
+        .overlay(PawletTheme.roundedShape(18).stroke(PawletTheme.border))
         .onAppear { preview.window = app.controls }
         .onDisappear { preview.stop() }
     }

@@ -15,6 +15,9 @@ enum PawletTheme {
     static let switchBorder = color(light: 0x7A7D73, dark: 0x829083)
     static let switchThumbOn = color(light: 0xFFFFFB, dark: 0x1C1E1D)
     static let switchThumbOff = color(light: 0x73766A, dark: 0xC3CBC2)
+    static func roundedShape(_ radius: CGFloat) -> RoundedRectangle {
+        RoundedRectangle(cornerRadius: radius, style: .continuous)
+    }
     private static func color(light: UInt32, dark: UInt32) -> Color {
         Color(nsColor: NSColor(name: nil) { appearance in
             let value = appearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua ? dark : light
@@ -31,8 +34,24 @@ struct PawletActionStyle: ButtonStyle {
         configuration.label.font(.system(size: compact ? 11 : 12, weight: .semibold))
             .padding(.horizontal, compact ? 8 : 13).frame(height: 34)
             .foregroundStyle(prominent ? Color.white : PawletTheme.ink)
-            .background(prominent ? PawletTheme.button : PawletTheme.surface, in: RoundedRectangle(cornerRadius: 10))
-            .overlay(RoundedRectangle(cornerRadius: 10).stroke(prominent ? PawletTheme.button : PawletTheme.border))
+            .background(prominent ? PawletTheme.button : PawletTheme.surface, in: PawletTheme.roundedShape(10))
+            .overlay(PawletTheme.roundedShape(10).strokeBorder(prominent ? PawletTheme.button : PawletTheme.border))
             .opacity(!isEnabled ? 0.45 : configuration.isPressed ? 0.72 : 1)
+    }
+}
+
+struct PawletMenuStyle: ViewModifier {
+    @Environment(\.isEnabled) private var isEnabled
+
+    func body(content: Content) -> some View {
+        content.pickerStyle(.menu).menuStyle(.borderlessButton).buttonStyle(.plain)
+            .padding(.horizontal, 10).padding(.trailing, 14).frame(minHeight: 30)
+            .overlay(alignment: .trailing) {
+                Image(systemName: "chevron.down").font(.system(size: 9, weight: .semibold))
+                    .padding(.trailing, 10).allowsHitTesting(false).accessibilityHidden(true)
+            }
+            .background(PawletTheme.surface, in: PawletTheme.roundedShape(10))
+            .overlay(PawletTheme.roundedShape(10).strokeBorder(PawletTheme.border))
+            .opacity(isEnabled ? 1 : 0.45)
     }
 }

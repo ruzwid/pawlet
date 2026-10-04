@@ -111,7 +111,7 @@ struct AnimationPreviewView: View {
                     Button { if model.isPlaying { model.stop() } else { model.play() } } label: {
                         Label(model.isPlaying ? "Pause" : "Play", systemImage: model.isPlaying ? "pause.fill" : "play.fill")
                             .font(.system(size: 12, weight: .semibold)).frame(width: 66)
-                    }.buttonStyle(.bordered).disabled(model.reducedMotion || model.atlas == nil)
+                    }.buttonStyle(PawletActionStyle(compact: true)).disabled(model.reducedMotion || model.atlas == nil)
                     Spacer()
                     Button { model.step(-1) } label: { Image(systemName: "backward.end.fill") }
                         .accessibilityLabel("Previous frame").help("Pause and show the previous frame")
@@ -125,8 +125,8 @@ struct AnimationPreviewView: View {
                     } label: { Text("\(model.speed.formatted())×").font(.caption.monospacedDigit()) }.frame(width: 48)
                 }.buttonStyle(.borderless).padding(16)
             }
-            .background(PawletTheme.stage, in: RoundedRectangle(cornerRadius: 20))
-            .overlay(RoundedRectangle(cornerRadius: 20).stroke(PawletTheme.border))
+            .background(PawletTheme.stage, in: PawletTheme.roundedShape(20))
+            .overlay(PawletTheme.roundedShape(20).stroke(PawletTheme.border))
             VStack(alignment: .leading, spacing: 10) {
                 HStack {
                     Text("ANIMATIONS").font(.system(size: 10, weight: .semibold)).tracking(1.3).foregroundStyle(PawletTheme.secondary)
@@ -143,8 +143,8 @@ struct AnimationPreviewView: View {
                             Label(clip.title, systemImage: clip.symbol).lineLimit(1).minimumScaleFactor(0.85).font(.system(size: 11, weight: model.clip == clip ? .semibold : .medium))
                                 .frame(maxWidth: .infinity, alignment: .leading).padding(.horizontal, 10).frame(height: 33)
                                 .foregroundStyle(model.clip == clip ? petAccent : Color.primary)
-                                .background(model.clip == clip ? petAccent.opacity(0.12) : PawletTheme.surface, in: RoundedRectangle(cornerRadius: 9))
-                                .overlay(RoundedRectangle(cornerRadius: 9).stroke(model.clip == clip ? petAccent.opacity(0.5) : PawletTheme.border))
+                                .background(model.clip == clip ? petAccent.opacity(0.12) : PawletTheme.surface, in: PawletTheme.roundedShape(9))
+                                .overlay(PawletTheme.roundedShape(9).stroke(model.clip == clip ? petAccent.opacity(0.5) : PawletTheme.border))
                         }.buttonStyle(.plain).accessibilityAddTraits(model.clip == clip ? .isSelected : []).accessibilityRemoveTraits(model.clip == clip ? [] : .isSelected).help(clip.detail)
                     }
                 }.disabled(model.atlas == nil)

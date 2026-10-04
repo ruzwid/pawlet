@@ -20,35 +20,41 @@ struct CreatePetView: View {
             }
             HStack(spacing: 12) {
                 Image(systemName: "sparkles").font(.system(size: 24)).foregroundStyle(petAccent)
-                    .frame(width: 54, height: 54).background(petAccent.opacity(0.10), in: RoundedRectangle(cornerRadius: 16)).accessibilityHidden(true)
+                    .frame(width: 54, height: 54).background(petAccent.opacity(0.10), in: PawletTheme.roundedShape(16)).accessibilityHidden(true)
                 VStack(alignment: .leading, spacing: 5) {
                     Text("An idea becomes a mini.").font(.system(size: 14, weight: .semibold))
                     Text("A tiny character with a personality of its own.").font(.callout).foregroundStyle(PawletTheme.secondary)
                 }
-            }.padding(16).frame(maxWidth: .infinity, alignment: .leading).background(PawletTheme.stage, in: RoundedRectangle(cornerRadius: 18))
+            }.padding(16).frame(maxWidth: .infinity, alignment: .leading).background(PawletTheme.stage, in: PawletTheme.roundedShape(18))
             VStack(alignment: .leading, spacing: 7) {
                 Text("Name").font(.callout.weight(.semibold))
-                TextField("What shall we call them?", text: $name).textFieldStyle(.roundedBorder).accessibilityLabel("Mini name")
+                TextField("What shall we call them?", text: $name).textFieldStyle(.plain)
+                    .padding(.horizontal, 12).frame(height: 36)
+                    .background(PawletTheme.surface, in: PawletTheme.roundedShape(10))
+                    .overlay(PawletTheme.roundedShape(10).strokeBorder(PawletTheme.border)).accessibilityLabel("Mini name")
             }
             VStack(alignment: .leading, spacing: 6) {
                 Text("What should it look like?").font(.callout.weight(.semibold))
-                TextEditor(text: $idea).accessibilityLabel("Character idea").font(.body).frame(height: 105).padding(6)
-                    .overlay(RoundedRectangle(cornerRadius: 8).stroke(.quaternary))
+                TextEditor(text: $idea).accessibilityLabel("Character idea").font(.body)
+                    .scrollContentBackground(.hidden).frame(height: 105).padding(8)
+                    .background(PawletTheme.surface, in: PawletTheme.roundedShape(10))
+                    .clipShape(PawletTheme.roundedShape(10))
+                    .overlay(PawletTheme.roundedShape(10).strokeBorder(PawletTheme.border))
             }
             HStack {
-                Picker("Style", selection: $style) { Text("Choose for me").tag("choose-for-me"); Text("3D toy").tag("3d-toy"); Text("Plush").tag("plush"); Text("Pixel").tag("pixel"); Text("Clay").tag("clay"); Text("Sticker").tag("sticker") }
+                Picker("Style", selection: $style) { Text("Choose for me").tag("choose-for-me"); Text("3D toy").tag("3d-toy"); Text("Plush").tag("plush"); Text("Pixel").tag("pixel"); Text("Clay").tag("clay"); Text("Sticker").tag("sticker") }.modifier(PawletMenuStyle())
                 Spacer()
-                Button(reference == nil ? "Add reference image…" : "Change image…") { chooseReference() }
+                Button(reference == nil ? "Add reference image…" : "Change image…") { chooseReference() }.buttonStyle(PawletActionStyle())
             }
             if let reference = reference { Label(reference.lastPathComponent, systemImage: "photo").font(.caption).foregroundStyle(.secondary) }
             Text("Opens a new Codex chat with the skill and prompt ready. Review it and press Send to begin. Image creation needs Codex and its image-creation plugin; your existing minis keep running independently.")
-                .font(.callout).foregroundStyle(.secondary)
+                .font(.callout).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
             if let error = error { Text(error).foregroundStyle(.red).font(.callout) }
             HStack {
-                Button("Cancel") { app.isCreating = false }.keyboardShortcut(.cancelAction)
+                Button("Cancel") { app.isCreating = false }.buttonStyle(PawletActionStyle()).keyboardShortcut(.cancelAction)
                 Spacer()
-                Button("Copy prompt") { prepare(open: false) }.disabled(!valid)
-                Button("Open in Codex") { prepare(open: true) }.buttonStyle(PawletActionStyle(prominent: true)).disabled(!valid).opacity(valid ? 1 : 0.55)
+                Button("Copy prompt") { prepare(open: false) }.buttonStyle(PawletActionStyle()).disabled(!valid)
+                Button("Open in Codex") { prepare(open: true) }.buttonStyle(PawletActionStyle(prominent: true)).disabled(!valid)
             }
         }.padding(30).frame(width: 550).background(PawletTheme.canvas)
     }
