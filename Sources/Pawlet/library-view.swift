@@ -41,34 +41,39 @@ struct LibraryView: View {
     }
 
     private var sidebar: some View {
-        VStack(alignment: .leading, spacing: 30) {
+        VStack(alignment: .leading, spacing: 22) {
             HStack(spacing: 10) {
                 Image(nsImage: app.pawImage).resizable().renderingMode(.template).scaledToFit().frame(width: 23, height: 23)
-                    .foregroundStyle(petAccent).padding(10).background(petAccent.opacity(0.10), in: RoundedRectangle(cornerRadius: 14)).accessibilityHidden(true)
+                    .foregroundStyle(petAccent).padding(8).background(petAccent.opacity(0.10), in: RoundedRectangle(cornerRadius: 12)).accessibilityHidden(true)
                 Text("Pawlet").font(.system(size: 22, weight: .bold, design: .rounded))
-            }.padding(.top, 12)
-            VStack(alignment: .leading, spacing: 9) {
-                Text("YOUR SPACE").font(.system(size: 9, weight: .semibold)).tracking(1.4).foregroundStyle(PawletTheme.secondary).padding(.leading, 11)
-                navigation("library", title: "Companions", symbol: "square.grid.2x2")
+            }.padding(.top, 8)
+            VStack(alignment: .leading, spacing: 6) {
+                navigation("library", title: "Minis", symbol: "pawprint.fill")
                 navigation("settings", title: "Settings", symbol: "slider.horizontal.3")
                 navigation("about", title: "About Pawlet", symbol: "info.circle")
             }
             Spacer()
-            VStack(alignment: .leading, spacing: 13) {
+            VStack(alignment: .leading, spacing: 10) {
                 Label("\(app.visibility.values.filter { $0 }.count) on desktop", systemImage: "desktopcomputer")
                     .font(.system(size: 12, weight: .medium))
-                Text("A little company.\nAt your own pace.").font(.caption).foregroundStyle(PawletTheme.secondary).lineSpacing(4)
                 Button { app.settings.paused.toggle() } label: {
                     Label(app.settings.paused ? "Resume pets" : "Pause pets", systemImage: app.settings.paused ? "play" : "pause")
                         .font(.system(size: 11, weight: .medium)).frame(maxWidth: .infinity, alignment: .leading)
                 }.buttonStyle(PawletActionStyle()).help("Pause or resume desktop animations")
-            }.padding(14).background(PawletTheme.surface.opacity(0.7), in: RoundedRectangle(cornerRadius: 15))
-        }.padding(18).frame(width: 168).frame(maxHeight: .infinity).background(.thinMaterial)
+            }.padding(10).background(PawletTheme.surface.opacity(0.7), in: RoundedRectangle(cornerRadius: 12))
+        }.padding(10).frame(width: 156).frame(maxHeight: .infinity).background(.thinMaterial)
     }
     private func navigation(_ id: String, title: String, symbol: String) -> some View {
         Button { app.section = id } label: {
-            Label(title, systemImage: symbol).font(.system(size: 13, weight: app.section == id ? .semibold : .medium))
-                .frame(maxWidth: .infinity, alignment: .leading).padding(.horizontal, 11).padding(.vertical, 11)
+            HStack(spacing: 9) {
+                if id == "library" {
+                    Image(nsImage: app.pawImage).resizable().renderingMode(.template).scaledToFit().frame(width: 16, height: 16).accessibilityHidden(true)
+                } else {
+                    Image(systemName: symbol).frame(width: 16).accessibilityHidden(true)
+                }
+                Text(title)
+            }.font(.system(size: 13, weight: app.section == id ? .semibold : .medium))
+                .frame(maxWidth: .infinity, alignment: .leading).padding(.horizontal, 10).padding(.vertical, 9)
                 .foregroundStyle(app.section == id ? petAccent : Color.primary)
                 .background(app.section == id ? petAccent.opacity(0.11) : .clear, in: RoundedRectangle(cornerRadius: 10))
         }.buttonStyle(.plain).accessibilityAddTraits(app.section == id ? .isSelected : []).accessibilityRemoveTraits(app.section == id ? [] : .isSelected)
@@ -80,9 +85,9 @@ struct LibraryView: View {
     private var libraryPage: some View {
         VStack(alignment: .leading, spacing: 18) {
             HStack(alignment: .center, spacing: 8) {
-                VStack(alignment: .leading, spacing: 5) {
-                    Text("A little company.").font(.system(size: 28, weight: .bold, design: .rounded))
-                    Text("Your favourite characters, close by.").font(.callout).foregroundStyle(PawletTheme.secondary)
+                HStack(alignment: .firstTextBaseline, spacing: 9) {
+                    Text("Your minis").font(.system(size: 26, weight: .bold, design: .rounded))
+                    Text("\(app.entries.count)").font(.callout.monospacedDigit()).foregroundStyle(PawletTheme.secondary)
                 }
                 Spacer(minLength: 12)
                 Button { app.revealLibrary() } label: { Label("Pets folder", systemImage: "folder") }.buttonStyle(PawletActionStyle())
@@ -100,14 +105,9 @@ struct LibraryView: View {
             } else {
                 HStack(alignment: .top, spacing: 18) {
                     VStack(alignment: .leading, spacing: 12) {
-                        HStack {
-                            Text("Your companions").font(.system(size: 14, weight: .semibold))
-                            Text("\(app.entries.count)").font(.caption.monospacedDigit()).foregroundStyle(PawletTheme.secondary)
-                            Spacer()
-                        }
                         HStack(spacing: 8) {
                             Image(systemName: "magnifyingglass").foregroundStyle(PawletTheme.secondary).accessibilityHidden(true)
-                            TextField("Find a companion", text: $search).textFieldStyle(.plain).font(.callout).accessibilityLabel("Search companions")
+                            TextField("Find a mini", text: $search).textFieldStyle(.plain).font(.callout).accessibilityLabel("Search minis")
                             if !search.isEmpty {
                                 Button { search = "" } label: { Image(systemName: "xmark.circle.fill") }.buttonStyle(.borderless).accessibilityLabel("Clear search")
                             }
@@ -115,7 +115,7 @@ struct LibraryView: View {
                             .overlay(RoundedRectangle(cornerRadius: 10).stroke(PawletTheme.border))
                         ScrollView {
                             if filteredPets.isEmpty {
-                                Text("No companions found.").font(.callout).foregroundStyle(PawletTheme.secondary).padding(.top, 40)
+                                Text("No minis found.").font(.callout).foregroundStyle(PawletTheme.secondary).padding(.top, 40)
                             } else {
                                 LazyVGrid(columns: [GridItem(.adaptive(minimum: 138), spacing: 12)], spacing: 12) {
                                     ForEach(filteredPets) { pet in petCard(pet) }
@@ -219,7 +219,7 @@ struct LibraryView: View {
             Text("The app works without Codex. Codex is only used when you choose to create new artwork.")
             Text("No accounts, telemetry or network listener. Imported pets are image and metadata files; they don't run code.").font(.callout).foregroundStyle(.secondary)
             Button("Learn about pet packs") { formatHelp = true }
-            Text("Version 0.5.1 · macOS 13+").font(.caption).foregroundStyle(.secondary)
+            Text("Version 0.5.2 · macOS 13+").font(.caption).foregroundStyle(.secondary)
             Spacer()
         }.padding(36).frame(maxWidth: .infinity, alignment: .leading)
     }

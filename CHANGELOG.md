@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.5.2
+
+- Redraw the paw with plump toe beans and a soft rounded pad; use it across the app, sidebar and menu bar.
+- Rename the library to Minis, simplify its heading, and remove repeated taglines and the sidebar section label.
+- Reduce sidebar padding and compact the desktop count and pause controls.
+
 ## 0.5.1
 
 - Fix stale preview artwork by loading the selected pet through one app-owned selection path.
