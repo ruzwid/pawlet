@@ -20,8 +20,10 @@ Mini cards inset the artwork stage by eight points and round it independently, k
 
 App-owned controls use shared hover and press surfaces; mini-card selection highlights only its outer border. Pointer hover fades only a background tint over 100 ms with cubic-bezier (0.23, 1, 0.32, 1); press feedback and navigation are immediate. Reduce Motion keeps the tint and removes its fade. Input focus has a persistent accent outline independent of hover. Native NSMenu content is anchored to SwiftUI button triggers so macOS cannot strip their custom hit areas or styling. Menu action targets are retained through the menu lifetime, and the anchor is weakly referenced.
 
-### Interaction states in 0.6.5
+### Interaction states in 0.6.6
 
 Mini-card hover and selection use the same outer accent border; the artwork and name surfaces remain unchanged. Visible minis have filled Hide controls, while hidden minis have outlined Show controls.
 
 Secondary controls use neutral text and icons with a single 11% neutral overlay for hover, selection and press in both themes. Sidebar navigation opts into olive text and tints; primary buttons retain their filled olive treatment. Combined states do not add opacity. Primary controls keep their filled hierarchy with the same subtle overlay for hover and press. Dark mode uses neutral charcoal surfaces and neutral secondary-control text, with olive reserved for sidebar accents and filled primary controls. Mini cards show only the name and visibility action; visibility also remains available to accessibility clients.
+
+Settings toggle rows keep a plain background on hover and press. The full row remains clickable, and the switch thumb and track communicate the state. Standalone buttons and dropdown triggers retain their hover feedback.

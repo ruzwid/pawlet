@@ -183,7 +183,7 @@ struct LibraryView: View {
             Text("The app works without Codex. Codex is only used when you choose to create new artwork.")
             Text("No accounts, telemetry or network listener. Imported minis are image and metadata files; they don't run code.").font(.callout).foregroundStyle(.secondary)
             Button("Learn about mini packs") { formatHelp = true }.buttonStyle(PawletActionStyle())
-            Text("Version 0.6.5 · macOS 13+").font(.caption).foregroundStyle(.secondary)
+            Text("Version 0.6.6 · macOS 13+").font(.caption).foregroundStyle(.secondary)
             Spacer()
         }.padding(36).frame(maxWidth: .infinity, alignment: .leading)
     }

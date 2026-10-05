@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.6.6
+
+- Remove settings toggle-row hover backgrounds while preserving whole-row clicks and native accessibility.
+
 ## 0.6.5
 
 - Use neutral text, icons and interaction fills for secondary controls, dropdowns and animation choices in both themes.

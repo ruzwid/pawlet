@@ -97,7 +97,7 @@ struct PawletToggleStyle: ToggleStyle {
                             .frame(width: 18, height: 18).padding(3)
                     }.frame(width: 40, height: 24)
             }.frame(minHeight: 26).contentShape(Rectangle())
-        }.buttonStyle(PawletPlainStyle())
+        }.buttonStyle(.plain)
             .accessibilityRepresentation {
                 Toggle(isOn: configuration.$isOn) { configuration.label }.toggleStyle(.switch).disabled(!isEnabled)
             }

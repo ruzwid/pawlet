@@ -1,4 +1,4 @@
-Pawlet 0.6.5 — macOS 13 or later
+Pawlet 0.6.6 — macOS 13 or later
 
 Drag Pawlet.app to Applications, then open it from Applications.
 The paw in the menu bar opens your library and settings.
