@@ -33,4 +33,5 @@ if [[ -n "${SIGN_IDENTITY:-}" ]]; then
 else
     codesign --force --sign - --timestamp=none "$task_app"
 fi
+touch "$task_app"
 printf 'Built %s\n' "$task_app"
