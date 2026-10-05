@@ -25,14 +25,23 @@ let writePNG: (CGImage, String) -> Void = { image, path in
     CGImageDestinationAddImage(destination, image, nil)
     precondition(CGImageDestinationFinalize(destination))
 }
+let iconColorSpace = CGColorSpace(name: CGColorSpace.sRGB)!
 let iconContext = CGContext(data: nil, width: 1024, height: 1024, bitsPerComponent: 8,
-    bytesPerRow: 4096, space: colorSpace, bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue)!
+    bytesPerRow: 4096, space: iconColorSpace, bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue)!
 iconContext.addPath(CGPath(roundedRect: CGRect(x: 28, y: 28, width: 968, height: 968), cornerWidth: 235, cornerHeight: 235, transform: nil))
 iconContext.clip()
-let backgroundGradient = CGGradient(colorsSpace: colorSpace,
-    colors: [CGColor(red: 1.0, green: 0.98, blue: 0.94, alpha: 1), CGColor(red: 1.0, green: 0.91, blue: 0.88, alpha: 1)] as CFArray, locations: [0, 1])!
-iconContext.drawLinearGradient(backgroundGradient, start: CGPoint(x: 0, y: 1024), end: CGPoint(x: 1024, y: 0), options: [])
-drawPaw(iconContext, CGColor(red: 1.0, green: 0.48, blue: 0.49, alpha: 1))
+iconContext.setFillColor(CGColor(colorSpace: iconColorSpace, components: [32.0 / 255, 32.0 / 255, 32.0 / 255, 1])!)
+iconContext.fill(CGRect(x: 0, y: 0, width: 1024, height: 1024))
+let pawColor = CGColor(colorSpace: iconColorSpace, components: [193.0 / 255, 207.0 / 255, 119.0 / 255, 1])!
+iconContext.setFillColor(pawColor.copy(alpha: 0.10)!)
+iconContext.fill(CGRect(x: 0, y: 0, width: 1024, height: 1024))
+let markWidth = 968.0 * 23.0 / 39.0
+iconContext.saveGState()
+iconContext.translateBy(x: (1024 - markWidth) / 2, y: (1024 - markWidth) / 2)
+iconContext.scaleBy(x: markWidth / 768, y: markWidth / 768)
+iconContext.translateBy(x: -128, y: -146)
+drawPaw(iconContext, pawColor)
+iconContext.restoreGState()
 writePNG(iconContext.makeImage()!, CommandLine.arguments[1])
 if CommandLine.arguments.count > 2 {
     let markContext = CGContext(data: nil, width: 128, height: 128, bitsPerComponent: 8,

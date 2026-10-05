@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.6.7
+
+- Match the macOS app icon to the sidebar badge: the same paw artwork and proportions in olive on a dark rounded tile.
+
 ## 0.6.6
 
 - Remove settings toggle-row hover backgrounds while preserving whole-row clicks and native accessibility.
