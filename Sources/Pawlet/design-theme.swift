@@ -9,7 +9,7 @@ enum PawletTheme {
     static let border = color(light: 0xDDDED4, dark: 0x404040)
     static let accent = color(light: 0x627000, dark: 0xC1CF77)
     static let button = color(light: 0x627000, dark: 0xB5C55C)
-    static let controlHighlight = color(light: 0x627000, dark: 0xFFFFFF)
+    static let controlHighlight = color(light: 0x292A25, dark: 0xFFFFFF)
     static let buttonInk = color(light: 0xFFFFFB, dark: 0x232323)
     static let ink = color(light: 0x292A25, dark: 0xECECEC)
     static let sidebar = color(light: 0xF1F2E9, dark: 0x202020)

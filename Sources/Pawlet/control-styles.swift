@@ -9,7 +9,8 @@ struct ControlSurface: ViewModifier {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var isHovered = false
     var background = Color.clear
-    var foreground = PawletTheme.accent
+    var foreground = PawletTheme.ink
+    var accented = false
     var radius: CGFloat = 10
     var bordered = true
     var selected = false
@@ -18,13 +19,13 @@ struct ControlSurface: ViewModifier {
 
     private var foregroundColor: Color {
         if prominent { return PawletTheme.buttonInk }
-        if selected || isEnabled && (isHovered || isPressed) { return PawletTheme.accent }
+        if accented && (selected || isEnabled && (isHovered || isPressed)) { return PawletTheme.accent }
         return foreground
     }
     private var borderColor: Color {
         guard bordered else { return .clear }
         if prominent { return PawletTheme.button }
-        if selected || isEnabled && (isHovered || isPressed) { return PawletTheme.accent.opacity(0.55) }
+        if selected || isEnabled && (isHovered || isPressed) { return accented ? PawletTheme.accent.opacity(0.55) : PawletTheme.ink.opacity(0.35) }
         return PawletTheme.border
     }
 
@@ -34,7 +35,7 @@ struct ControlSurface: ViewModifier {
             .background {
                 ZStack {
                     PawletTheme.roundedShape(radius).fill(background)
-                    PawletTheme.roundedShape(radius).fill(prominent ? Color.black.opacity(0.08) : PawletTheme.controlHighlight.opacity(0.11))
+                    PawletTheme.roundedShape(radius).fill(prominent ? Color.black.opacity(0.08) : (accented ? PawletTheme.accent : PawletTheme.controlHighlight).opacity(0.11))
                         .opacity(selected || isEnabled && (isHovered || isPressed) ? 1 : 0)
                         .animation(reduceMotion || selected || isPressed ? nil : InterfaceMotion.hoverFeedback, value: isHovered)
                 }.allowsHitTesting(false)
@@ -54,10 +55,10 @@ struct ControlSurface: ViewModifier {
 struct PawletPlainStyle: ButtonStyle {
     var selected = false
     var radius: CGFloat = 8
+    var accented = false
 
     func makeBody(configuration: Configuration) -> some View {
-        configuration.label.modifier(ControlSurface(foreground: selected ? PawletTheme.accent : PawletTheme.ink,
-            radius: radius, bordered: false, selected: selected, isPressed: configuration.isPressed))
+        configuration.label.modifier(ControlSurface(accented: accented, radius: radius, bordered: false, selected: selected, isPressed: configuration.isPressed))
     }
 }
 

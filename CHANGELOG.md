@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.6.5
+
+- Use neutral text, icons and interaction fills for secondary controls, dropdowns and animation choices in both themes.
+- Keep green accents on primary buttons and sidebar navigation.
+
 ## 0.6.4
 
 - Use neutral charcoal backgrounds and grey hover/selection fills in dark mode, reserving olive for accents.
