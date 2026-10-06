@@ -25,7 +25,7 @@ public sealed class PetRuntime : IDisposable
         var full = Path.GetFullPath(libraryPetDir);
         if (_open.ContainsKey(full))
         {
-            _open[full].Window.Activate();
+            // Already visible; do not Activate (steals focus from the user's app).
             return;
         }
 
@@ -46,6 +46,8 @@ public sealed class PetRuntime : IDisposable
         {
             if (_open.TryGetValue(full, out var entry) && ReferenceEquals(entry.Window, window))
             {
+                // TearDown first so timer / hit-test cannot call into a disposed atlas.
+                entry.Window.TearDown();
                 entry.Atlas.Dispose();
                 _open.Remove(full);
             }
