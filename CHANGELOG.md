@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.6.9
+
+- Remove slider tick marks in Settings and individual mini size controls while preserving stepped values and accessibility adjustments.
+
 ## 0.6.8
 
 - Import multiple mini packs, ZIPs, folders or sprite sheets in one selection; keep successful imports when another fails.

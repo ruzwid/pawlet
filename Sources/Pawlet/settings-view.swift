@@ -115,8 +115,7 @@ struct SettingsSliderRow: View {
     var body: some View {
         HStack(spacing: 12) {
             Text(title).frame(width: 164, alignment: .leading)
-            Slider(value: $value, in: range, step: step) { Text(title) }
-                .labelsHidden().accessibilityLabel(title)
+            PawletSlider(title: title, value: $value, range: range, step: step)
             Text(displayValue).monospacedDigit().frame(width: 45).accessibilityHidden(true)
         }
     }

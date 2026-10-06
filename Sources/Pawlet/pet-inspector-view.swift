@@ -39,10 +39,9 @@ struct PetInspectorView: View {
             if !app.settings.greetOnHover { Text("Hover reactions are off in Settings.").font(.caption).foregroundStyle(PawletTheme.secondary) }
             HStack(spacing: 12) {
                 Text("Size").font(.system(size: 12, weight: .medium))
-                Slider(value: Binding(get: { app.miniSize(for: pet.id) }, set: { app.setSizeOverride($0, for: pet.id) }),
-                    in: MotionConstants.MIN_PET_SCALE...MotionConstants.MAX_PET_SCALE, step: 0.01) {
-                    Text("Size for \(pet.manifest.name)")
-                }.labelsHidden().accessibilityLabel("Size for \(pet.manifest.name)")
+                PawletSlider(title: "Size for \(pet.manifest.name)",
+                    value: Binding(get: { app.miniSize(for: pet.id) }, set: { app.setSizeOverride($0, for: pet.id) }),
+                    range: MotionConstants.MIN_PET_SCALE...MotionConstants.MAX_PET_SCALE)
                     .help("Resize this mini on your desktop. Other minis keep their size.")
                 Text("\(Int((app.miniSize(for: pet.id) * 100).rounded()))%")
                     .font(.system(size: 12)).monospacedDigit().frame(width: 42, alignment: .trailing)
