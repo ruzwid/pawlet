@@ -1,0 +1,4 @@
+[
+  { "now": 0.2, "speed": 1, "action": "greet-wave", "expectRow": 3 },
+  { "now": 10, "expectRow": 0, "expectColumn": 0 }
+]
