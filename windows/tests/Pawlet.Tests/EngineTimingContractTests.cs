@@ -31,6 +31,22 @@ public class EngineTimingContractTests
     }
 
     [Fact]
+    public void MotionConstants_match_shared_engine_timings()
+    {
+        var json = File.ReadAllText(SharedPath("engine-timings.json"));
+        var file = JsonSerializer.Deserialize<EngineTimingsFile>(json, JsonOptions)
+            ?? throw new InvalidDataException("engine-timings.json");
+
+        Assert.NotNull(file.Motion);
+        Assert.Equal(MotionConstants.DefaultIntervalSeconds, file.Motion.DefaultIntervalSeconds);
+        Assert.Equal(MotionConstants.MaxIntervalSeconds, file.Motion.MaxIntervalSeconds);
+        Assert.Equal(MotionConstants.MinSpeedMultiplier, file.Motion.MinSpeed);
+        Assert.Equal(MotionConstants.MaxSpeedMultiplier, file.Motion.MaxSpeed);
+        Assert.Equal(MotionConstants.MinPetScale, file.Motion.MinScale);
+        Assert.Equal(MotionConstants.MaxPetScale, file.Motion.MaxScale);
+    }
+
+    [Fact]
     public void Wave_greet_fixture_matches_animation_engine()
     {
         var json = File.ReadAllText(SharedPath(Path.Combine("fixtures", "engine", "wave-greet.json")));
@@ -75,6 +91,7 @@ public class EngineTimingContractTests
     private sealed class EngineTimingsFile
     {
         public List<StateTiming> States { get; set; } = [];
+        public MotionTiming? Motion { get; set; }
     }
 
     private sealed class StateTiming
@@ -83,6 +100,16 @@ public class EngineTimingContractTests
         public int Row { get; set; }
         public int FrameCount { get; set; }
         public double SecondsPerFrame { get; set; }
+    }
+
+    private sealed class MotionTiming
+    {
+        public double DefaultIntervalSeconds { get; set; }
+        public double MaxIntervalSeconds { get; set; }
+        public double MinSpeed { get; set; }
+        public double MaxSpeed { get; set; }
+        public double MinScale { get; set; }
+        public double MaxScale { get; set; }
     }
 
     private sealed class WaveGreetCase

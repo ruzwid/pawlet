@@ -124,7 +124,7 @@ dotnet run --project windows/src/Pawlet -c Release -- --import path\to\Mochi.pet
 
 An empty library seeds bundled Mochi on first run and opens the library window. The tray offers Show library, Show all, Hide all, Pause, and Quit. Closing the library keeps desktop minis running; Quit hides pets, then exits.
 
-The library is a card grid (composition A): **Your minis** heading, idle-cell stages, Show/Hide per mini, filled olive Import, and a compact Settings stack. Light chrome brushes come from `shared/tokens/pawlet.tokens.json` via `windows/src/Pawlet/Themes/PawletTokens.xaml`. Dark WPF theme is not wired yet.
+The library is a card grid (composition A): **Your minis** heading, idle-cell stages, Show/Hide per mini, filled olive Import, and a compact Settings stack. Light chrome brushes in `windows/src/Pawlet/Themes/PawletTokens.xaml` must match the light roles in `shared/tokens/pawlet.tokens.json` (`check-tokens.py`). Dark WPF theme is not wired yet.
 
 Data lives under `%AppData%\Pawlet\` (`Library\<id>\` for packs, `settings.json` for preferences). **Start with Windows** writes a CurrentUser `Run` value named `Pawlet`. To disable it: uncheck the option in the library Settings panel, turn it off in Task Manager → Startup apps, or delete `HKCU\Software\Microsoft\Windows\CurrentVersion\Run\Pawlet` in Registry Editor.
 
@@ -134,17 +134,16 @@ CI: `.github/workflows/windows.yml` builds `windows/Pawlet.sln` and runs `dotnet
 
 ## Shared contracts
 
-Mac and Windows share checked-in JSON under `shared/` so engine timings, settings keys, pack reject fixtures, and design tokens cannot drift silently:
+Mac and Windows share checked-in JSON under `shared/` for engine timings, pack reject fixtures, and design tokens. Preference wire keys still differ per host (Mac `UserDefaults` vs Windows `settings.json`) and are not covered by a shared key file yet.
 
-| Path | Role |
-| --- | --- |
-| `shared/engine-timings.json` | Animation state rows, frame counts, seconds per frame, motion limits |
-| `shared/settings-keys.json` | Preference key names, types, and defaults |
-| `shared/fixtures/engine/wave-greet.json` | Golden wave/greet timing case |
-| `shared/fixtures/packs/zip-slip-evil.petpack` | Pack import must reject (`../evil.png`) |
-| `shared/tokens/pawlet.tokens.json` | Light/dark `#RRGGBB` for every `PawletTheme` color role |
+| Path | Role | Enforcement |
+| --- | --- | --- |
+| `shared/engine-timings.json` | Animation state rows, frame counts, seconds per frame, motion limits | Mac: `check-engine-timings.py`. Windows: xUnit against `PetState` / `MotionConstants` |
+| `shared/fixtures/engine/wave-greet.json` | Golden wave/greet timing case | Windows xUnit |
+| `shared/fixtures/packs/zip-slip-evil.petpack` | Pack import must reject (`../evil.png`) | Windows xUnit |
+| `shared/tokens/pawlet.tokens.json` | Light/dark `#RRGGBB` for every `PawletTheme` color role | Mac: Swift theme vs JSON. Windows: light `PawletTokens.xaml` colors vs JSON (`check-tokens.py`) |
 
-Mac CI runs `python3 scripts/check-engine-timings.py` and `python3 scripts/check-tokens.py` after checkout. Windows xUnit tests load the engine and pack fixtures from `shared/`.
+Mac CI runs `python3 scripts/check-engine-timings.py` and `python3 scripts/check-tokens.py` after checkout.
 
 ## Next milestones
 
