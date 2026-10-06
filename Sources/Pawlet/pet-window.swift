@@ -36,6 +36,7 @@ final class DesktopPet: NSObject {
     private var lastMouse = NSPoint.zero
     private var dragged = false
     private var dragging = false
+    private var dragPlacementAppBundleID: String?
     private var dragState: PetState?
     private var lastPointer = NSPoint.zero
     private var pointerActiveUntil: Double = 0
@@ -125,7 +126,10 @@ final class DesktopPet: NSObject {
 
     func savePosition() {
         guard let owner = owner else { return }
-        let appBundleID = owner.settings.rememberPlacePerApp ? owner.placementAppBundleID() : nil
+        let appBundleID = AppPlacement.originWriteAppBundleID(
+            rememberPlacePerApp: owner.settings.rememberPlacePerApp,
+            dragStartBundleID: dragPlacementAppBundleID,
+            currentBundleID: owner.placementAppBundleID())
         AppPlacement.writeOrigin(defaults: owner.defaults, petID: atlas.id,
             origin: NSPoint(x: panel.frame.minX, y: panel.frame.minY),
             appBundleID: appBundleID, selfBundleID: Bundle.main.bundleIdentifier)
@@ -133,6 +137,7 @@ final class DesktopPet: NSObject {
 
     func beginDrag(_ event: NSEvent) {
         dragging = true; dragged = false; wanderTarget = nil
+        dragPlacementAppBundleID = owner?.placementAppBundleID()
         let mouse = NSEvent.mouseLocation
         grab = NSPoint(x: mouse.x - panel.frame.minX, y: mouse.y - panel.frame.minY)
         dragStart = mouse; lastMouse = mouse
@@ -151,8 +156,15 @@ final class DesktopPet: NSObject {
 
     func endDrag(_ event: NSEvent) {
         dragging = false; dragState = nil
-        if dragged { clampToScreen(); savePosition(); engine.perform(.idle, now: ProcessInfo.processInfo.systemUptime, seconds: 0.25) }
-        else if owner?.settings.animateInteractions == true { perform(event.clickCount >= 2 ? .jumping : .waving) }
+        if dragged {
+            clampToScreen()
+            savePosition()
+            engine.perform(.idle, now: ProcessInfo.processInfo.systemUptime, seconds: 0.25)
+            owner?.applyRememberedAppPlacement()
+        } else if owner?.settings.animateInteractions == true {
+            perform(event.clickCount >= 2 ? .jumping : .waving)
+        }
+        dragPlacementAppBundleID = nil
     }
 
     func perform(_ state: PetState, seconds: Double? = nil) {

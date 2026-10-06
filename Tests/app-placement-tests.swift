@@ -9,6 +9,16 @@ enum AppPlacementTests {
         try ProjectTests.require(!AppPlacement.isTrackable(bundleID: "a/b", selfBundleID: selfID), "Slash must not be trackable")
         try ProjectTests.require(AppPlacement.isTrackable(bundleID: "com.google.Chrome", selfBundleID: selfID), "Chrome bundle must be trackable")
 
+        try ProjectTests.require(AppPlacement.originWriteAppBundleID(rememberPlacePerApp: false,
+            dragStartBundleID: "com.tinyspeck.slackmacgap", currentBundleID: "com.google.Chrome") == nil,
+            "Origin write must ignore apps when per-app place is off")
+        try ProjectTests.require(AppPlacement.originWriteAppBundleID(rememberPlacePerApp: true,
+            dragStartBundleID: "com.tinyspeck.slackmacgap", currentBundleID: "com.google.Chrome") == "com.tinyspeck.slackmacgap",
+            "Drag-start app must win over a mid-drag frontmost change")
+        try ProjectTests.require(AppPlacement.originWriteAppBundleID(rememberPlacePerApp: true,
+            dragStartBundleID: nil, currentBundleID: "com.google.Chrome") == "com.google.Chrome",
+            "Without a drag-start pin, origin write uses the current frontmost app")
+
         let suite = "com.ruzwid.pawlet.placement-tests." + UUID().uuidString
         let defaults = UserDefaults(suiteName: suite)!
         defer { defaults.removePersistentDomain(forName: suite) }

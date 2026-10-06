@@ -7,6 +7,12 @@ enum AppPlacement {
         return true
     }
 
+    /// Slot for an origin write: drag-start app wins over current frontmost when per-app place is on.
+    static func originWriteAppBundleID(rememberPlacePerApp: Bool, dragStartBundleID: String?, currentBundleID: String?) -> String? {
+        guard rememberPlacePerApp else { return nil }
+        return dragStartBundleID ?? currentBundleID
+    }
+
     static func writeOrigin(defaults: UserDefaults, petID: String, origin: NSPoint, appBundleID: String?, selfBundleID: String?) {
         defaults.set(Double(origin.x), forKey: "pet.\(petID).x")
         defaults.set(Double(origin.y), forKey: "pet.\(petID).y")
