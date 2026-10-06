@@ -46,6 +46,8 @@ public partial class PetWindow : Window
 
     public AnimationEngine Engine => _engine;
 
+    public bool Paused { get; set; }
+
     /// <summary>
     /// Stops the render timer and gates atlas callers so dispose cannot race
     /// a queued tick or <c>WM_NCHITTEST</c> sample.
@@ -71,7 +73,7 @@ public partial class PetWindow : Window
         }
 
         var now = Stopwatch.GetTimestamp() / (double)Stopwatch.Frequency;
-        var frame = _engine.Frame(now);
+        var frame = _engine.Frame(now, paused: Paused);
         if (frame == _currentFrame)
         {
             return;
@@ -138,7 +140,7 @@ public partial class PetWindow : Window
         _dragging = false;
         ReleaseMouseCapture();
 
-        if (!_moved)
+        if (!_moved && !Paused)
         {
             var now = Stopwatch.GetTimestamp() / (double)Stopwatch.Frequency;
             _engine.Perform(PetState.Waving, now);
