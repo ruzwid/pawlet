@@ -3,11 +3,15 @@ on:
   push:
     branches: [main]
   pull_request:
+concurrency:
+  group: windows-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 permissions:
   contents: read
 jobs:
   test:
     runs-on: windows-latest
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-dotnet@v4
@@ -17,4 +21,4 @@ jobs:
       - name: Build solution (Core + WPF + Tests)
         run: dotnet build windows/Pawlet.sln -c Release
       - name: Test
-        run: dotnet test windows/Pawlet.sln -c Release --no-build
+        run: dotnet test windows/Pawlet.sln -c Release --no-build --verbosity normal
