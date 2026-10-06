@@ -1,6 +1,8 @@
 using System.Diagnostics;
 using System.Windows;
+using System.Windows.Controls;
 using System.Windows.Input;
+using System.Windows.Media.Animation;
 using System.Windows.Threading;
 using Pawlet.Core.Engine;
 
@@ -8,6 +10,13 @@ namespace Pawlet.Pets;
 
 public partial class PetWindow : Window
 {
+    private static readonly double[] SizeSteps =
+    [
+        0.25, 0.50, 0.75, 1.00, 1.25, 1.50, 1.75,
+    ];
+
+    private static readonly TimeSpan PlacementFadeDuration = TimeSpan.FromSeconds(0.15);
+
     private readonly AtlasSheet _atlas;
     private readonly AnimationEngine _engine = new();
     private readonly DispatcherTimer _timer;
@@ -19,6 +28,7 @@ public partial class PetWindow : Window
     private bool _moved;
     private bool _alive = true;
     private double _scale = 1.0;
+    private int _placementGeneration;
 
     public PetWindow(AtlasSheet atlas)
     {
@@ -62,8 +72,17 @@ public partial class PetWindow : Window
 
     public bool IsDragging => _dragging;
 
-    /// <summary>True while a placement fade is in flight (Task 5). Task 4 always false.</summary>
+    /// <summary>True while a placement fade is in flight.</summary>
     public bool PlacementTransitionActive { get; private set; }
+
+    /// <summary>Invoked on drag end when the window actually moved (stamp app origin).</summary>
+    public Action? OnDragEnded { get; set; }
+
+    /// <summary>Effective scale for Size menu check marks.</summary>
+    public Func<double>? ResolveEffectiveScale { get; set; }
+
+    /// <summary>Size menu: set override, or null to clear (Use default size).</summary>
+    public Action<double?>? OnSetSizeOverride { get; set; }
 
     public double Scale
     {
@@ -72,21 +91,93 @@ public partial class PetWindow : Window
     }
 
     /// <summary>
-    /// Apply remembered origin/scale. Task 4 snaps immediately; Task 5 replaces with fade.
+    /// Apply remembered origin/scale with a short opacity fade, or snap when client-area animations are off.
     /// </summary>
     public void ApplyRememberedPlacement(Point? origin, double? scale, double settingsOpacity)
     {
-        _ = settingsOpacity;
+        var targetScale = scale is { } s
+            ? Math.Min(MotionConstants.MaxPetScale, Math.Max(MotionConstants.MinPetScale, s))
+            : _scale;
+        var width = AtlasSheet.CellWidth * targetScale;
+        var height = AtlasSheet.CellHeight * targetScale;
+
+        double? targetLeft = null;
+        double? targetTop = null;
         if (origin is { } point)
         {
-            Left = point.X;
-            Top = point.Y;
+            var work = SystemParameters.WorkArea;
+            targetLeft = Clamp(point.X, work.Left, Math.Max(work.Left, work.Right - width));
+            targetTop = Clamp(point.Y, work.Top, Math.Max(work.Top, work.Bottom - height));
         }
 
-        if (scale is { } value)
+        var originChanges = targetLeft is { } left
+            && targetTop is { } top
+            && (Math.Abs(Left - left) > 0.5 || Math.Abs(Top - top) > 0.5);
+        var scaleChanges = scale is not null && Math.Abs(_scale - targetScale) > 0.001;
+        if (!originChanges && !scaleChanges)
         {
-            Scale = value;
+            return;
         }
+
+        void ApplyGeometry()
+        {
+            if (targetLeft is { } left && targetTop is { } top)
+            {
+                Left = left;
+                Top = top;
+            }
+
+            if (scale is not null)
+            {
+                ApplyScale(targetScale);
+            }
+        }
+
+        if (!SystemParameters.ClientAreaAnimation)
+        {
+            CancelPlacementAnimation();
+            ApplyGeometry();
+            Opacity = settingsOpacity;
+            PlacementTransitionActive = false;
+            return;
+        }
+
+        var generation = ++_placementGeneration;
+        PlacementTransitionActive = true;
+        BeginAnimation(OpacityProperty, null);
+
+        var fadeOut = new DoubleAnimation(Opacity, 0, PlacementFadeDuration)
+        {
+            FillBehavior = FillBehavior.Stop,
+        };
+        fadeOut.Completed += (_, _) =>
+        {
+            if (!_alive || generation != _placementGeneration)
+            {
+                return;
+            }
+
+            Opacity = 0;
+            ApplyGeometry();
+
+            var fadeIn = new DoubleAnimation(0, settingsOpacity, PlacementFadeDuration)
+            {
+                FillBehavior = FillBehavior.Stop,
+            };
+            fadeIn.Completed += (_, _) =>
+            {
+                if (!_alive || generation != _placementGeneration)
+                {
+                    return;
+                }
+
+                BeginAnimation(OpacityProperty, null);
+                Opacity = settingsOpacity;
+                PlacementTransitionActive = false;
+            };
+            BeginAnimation(OpacityProperty, fadeIn);
+        };
+        BeginAnimation(OpacityProperty, fadeOut);
     }
 
     /// <summary>
@@ -101,10 +192,18 @@ public partial class PetWindow : Window
         }
 
         _alive = false;
+        _placementGeneration++;
+        CancelPlacementAnimation();
+        PlacementTransitionActive = false;
         _hitTest.Dispose();
         _timer.Stop();
         _timer.Tick -= OnTick;
         SpriteImage.Source = null;
+    }
+
+    private void CancelPlacementAnimation()
+    {
+        BeginAnimation(OpacityProperty, null);
     }
 
     private void ApplyScale(double scale)
@@ -114,6 +213,45 @@ public partial class PetWindow : Window
             Math.Max(MotionConstants.MinPetScale, scale));
         Width = AtlasSheet.CellWidth * _scale;
         Height = AtlasSheet.CellHeight * _scale;
+    }
+
+    private void OnContextMenuOpened(object sender, RoutedEventArgs e)
+    {
+        SizeMenuItem.Items.Clear();
+        var effective = ResolveEffectiveScale?.Invoke() ?? _scale;
+        var checkedPercent = (int)Math.Round(effective * 100);
+
+        foreach (var step in SizeSteps)
+        {
+            var percent = (int)Math.Round(step * 100);
+            var item = new MenuItem
+            {
+                Header = $"{percent}%",
+                IsCheckable = true,
+                IsChecked = percent == checkedPercent,
+                Tag = step,
+            };
+            item.Click += OnSizeStepClick;
+            SizeMenuItem.Items.Add(item);
+        }
+
+        SizeMenuItem.Items.Add(new Separator());
+        var useDefault = new MenuItem { Header = "Use default size" };
+        useDefault.Click += OnUseDefaultSizeClick;
+        SizeMenuItem.Items.Add(useDefault);
+    }
+
+    private void OnSizeStepClick(object sender, RoutedEventArgs e)
+    {
+        if (sender is MenuItem { Tag: double step })
+        {
+            OnSetSizeOverride?.Invoke(step);
+        }
+    }
+
+    private void OnUseDefaultSizeClick(object sender, RoutedEventArgs e)
+    {
+        OnSetSizeOverride?.Invoke(null);
     }
 
     private void OnTick(object? sender, EventArgs e)
@@ -213,7 +351,11 @@ public partial class PetWindow : Window
         _dragging = false;
         ReleaseMouseCapture();
 
-        if (!_moved && !Paused && !ClickThrough)
+        if (_moved)
+        {
+            OnDragEnded?.Invoke();
+        }
+        else if (!Paused && !ClickThrough)
         {
             var now = Stopwatch.GetTimestamp() / (double)Stopwatch.Frequency;
             _engine.Greet(HoverReaction, now, Speed);
@@ -222,4 +364,7 @@ public partial class PetWindow : Window
 
         e.Handled = true;
     }
+
+    private static double Clamp(double value, double min, double max) =>
+        Math.Min(max, Math.Max(min, value));
 }

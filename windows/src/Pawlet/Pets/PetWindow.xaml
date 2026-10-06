@@ -13,6 +13,11 @@
         ResizeMode="NoResize"
         SnapsToDevicePixels="True"
         UseLayoutRounding="True">
+    <Window.ContextMenu>
+        <ContextMenu Opened="OnContextMenuOpened">
+            <MenuItem x:Name="SizeMenuItem" Header="Size" />
+        </ContextMenu>
+    </Window.ContextMenu>
     <Image x:Name="SpriteImage"
            Stretch="Fill"
            RenderOptions.BitmapScalingMode="NearestNeighbor" />

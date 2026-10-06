@@ -44,11 +44,17 @@ public sealed class PetRuntime : IDisposable
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
         ArgumentNullException.ThrowIfNull(settings);
+        var wasRemembering = _settings.RememberPlacePerApp;
         _settings = settings;
         _paused = settings.Pause;
         foreach (var entry in _open.Values)
         {
             ApplyToWindow(entry);
+        }
+
+        if (!wasRemembering && _settings.RememberPlacePerApp)
+        {
+            ApplyAppPlacementToOpenWindows();
         }
 
         if (_startWithWindowsApplied != settings.StartWithWindows)
@@ -90,6 +96,10 @@ public sealed class PetRuntime : IDisposable
 
         var atlas = AtlasSheet.Load(atlasPath, manifest.SpriteVersion);
         var window = new PetWindow(atlas);
+        var petId = manifest.Id;
+        window.OnDragEnded = () => SaveOrigin(petId, window.Left, window.Top, stampAppSlot: true);
+        window.ResolveEffectiveScale = () => ResolvedScale(petId);
+        window.OnSetSizeOverride = size => SetSizeOverride(petId, size);
         window.Closed += (_, _) =>
         {
             if (_open.TryGetValue(full, out var entry) && ReferenceEquals(entry.Window, window))
@@ -101,7 +111,6 @@ public sealed class PetRuntime : IDisposable
             }
         };
 
-        var petId = manifest.Id;
         var index = _open.Count;
         var global = _placements.RememberedGlobalOrigin(petId);
         if (global is { } origin)
@@ -159,7 +168,11 @@ public sealed class PetRuntime : IDisposable
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
         _foregroundAppKey = PlacementStore.NormalizeAppKey(appKey);
+        ApplyAppPlacementToOpenWindows();
+    }
 
+    private void ApplyAppPlacementToOpenWindows()
+    {
         if (!UsesAppPlacement)
         {
             return;
