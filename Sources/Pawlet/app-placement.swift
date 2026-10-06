@@ -1,6 +1,31 @@
 import AppKit
 
+struct PlacementWindowCandidate: Equatable {
+    var bundleID: String
+    var bounds: NSRect
+    /// Front-to-back order: 0 is topmost among the provided list.
+    var zOrder: Int
+    var isFullscreen: Bool
+}
+
 enum AppPlacement {
+    /// Prefer lowest zOrder among fullscreen candidates that intersect `monitor`;
+    /// else lowest zOrder among intersecting non-fullscreen; else nil.
+    static func preferredAppBundleID(
+        monitor: NSRect,
+        candidates: [PlacementWindowCandidate],
+        selfBundleID: String?
+    ) -> String? {
+        let intersecting = candidates.filter { candidate in
+            guard intersectionArea(monitor, candidate.bounds) > 0 else { return false }
+            return isTrackable(bundleID: candidate.bundleID, selfBundleID: selfBundleID)
+        }
+        if let bestFS = intersecting.filter(\.isFullscreen).min(by: { $0.zOrder < $1.zOrder }) {
+            return bestFS.bundleID
+        }
+        return intersecting.min(by: { $0.zOrder < $1.zOrder })?.bundleID
+    }
+
     static func isTrackable(bundleID: String?, selfBundleID: String?) -> Bool {
         guard let bundleID, bundleID.range(of: "^[A-Za-z0-9][A-Za-z0-9._-]{0,253}$", options: .regularExpression) != nil else { return false }
         if let selfBundleID, bundleID == selfBundleID { return false }

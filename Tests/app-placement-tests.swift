@@ -103,5 +103,42 @@ enum AppPlacementTests {
         try ProjectTests.require(
             AppPlacement.preferredSafeFrame(for: disconnected, candidates: [primary, secondary]) == secondary,
             "Disconnected-monitor coords must fall back to the nearest screen")
+
+        let monitor = NSRect(x: 0, y: 0, width: 1920, height: 1080)
+        let cursorFS = PlacementWindowCandidate(
+            bundleID: "com.todesktop.230313mzl4w4u92", bounds: monitor, zOrder: 1, isFullscreen: true)
+        let chromeWin = PlacementWindowCandidate(
+            bundleID: "com.google.Chrome", bounds: NSRect(x: 100, y: 100, width: 800, height: 600),
+            zOrder: 0, isFullscreen: false)
+        try ProjectTests.require(
+            AppPlacement.preferredAppBundleID(monitor: monitor, candidates: [chromeWin, cursorFS], selfBundleID: selfID)
+                == "com.todesktop.230313mzl4w4u92",
+            "Fullscreen on the monitor must beat a higher z-order windowed app")
+        let chromeOther = PlacementWindowCandidate(
+            bundleID: "com.google.Chrome", bounds: NSRect(x: 2000, y: 100, width: 800, height: 600),
+            zOrder: 0, isFullscreen: true)
+        try ProjectTests.require(
+            AppPlacement.preferredAppBundleID(monitor: monitor, candidates: [chromeOther, cursorFS], selfBundleID: selfID)
+                == "com.todesktop.230313mzl4w4u92",
+            "Fullscreen on another monitor must not win")
+        let slackWin = PlacementWindowCandidate(
+            bundleID: "com.tinyspeck.slackmacgap", bounds: NSRect(x: 50, y: 50, width: 900, height: 700),
+            zOrder: 0, isFullscreen: false)
+        let cursorWin = PlacementWindowCandidate(
+            bundleID: "com.todesktop.230313mzl4w4u92", bounds: NSRect(x: 200, y: 200, width: 700, height: 500),
+            zOrder: 1, isFullscreen: false)
+        try ProjectTests.require(
+            AppPlacement.preferredAppBundleID(monitor: monitor, candidates: [slackWin, cursorWin], selfBundleID: selfID)
+                == "com.tinyspeck.slackmacgap",
+            "With no fullscreen, topmost intersecting window wins")
+        try ProjectTests.require(
+            AppPlacement.preferredAppBundleID(monitor: monitor, candidates: [chromeOther], selfBundleID: selfID) == nil,
+            "No intersecting window must yield nil")
+        let pawlet = PlacementWindowCandidate(
+            bundleID: selfID, bounds: monitor, zOrder: 0, isFullscreen: true)
+        try ProjectTests.require(
+            AppPlacement.preferredAppBundleID(monitor: monitor, candidates: [pawlet, slackWin], selfBundleID: selfID)
+                == "com.tinyspeck.slackmacgap",
+            "Pawlet windows must never win")
     }
 }
