@@ -144,6 +144,16 @@ public partial class PetWindow : Window
         var scaleChanges = scale is not null && Math.Abs(_scale - targetScale) > 0.001;
         if (!originChanges && !scaleChanges)
         {
+            // Mid-fade geometry is not applied yet. Cancel so a stale target cannot land
+            // after a no-op switch (stay / same coords as pre-fade).
+            if (PlacementTransitionActive)
+            {
+                _placementGeneration++;
+                CancelPlacementAnimation();
+                Opacity = settingsOpacity;
+                PlacementTransitionActive = false;
+            }
+
             return;
         }
 
@@ -377,20 +387,26 @@ public partial class PetWindow : Window
             return;
         }
 
-        // Stamp while still dragging so PlacementStampKey keeps the drag pin.
-        if (_moved)
+        try
         {
-            OnDragEnded?.Invoke();
+            // Stamp while still dragging so PlacementStampKey keeps the drag pin.
+            if (_moved)
+            {
+                OnDragEnded?.Invoke();
+            }
+            else if (!Paused && !ClickThrough)
+            {
+                var now = Stopwatch.GetTimestamp() / (double)Stopwatch.Frequency;
+                _engine.Greet(HoverReaction, now, Speed);
+                OnTick(null, EventArgs.Empty);
+            }
         }
-        else if (!Paused && !ClickThrough)
+        finally
         {
-            var now = Stopwatch.GetTimestamp() / (double)Stopwatch.Frequency;
-            _engine.Greet(HoverReaction, now, Speed);
-            OnTick(null, EventArgs.Empty);
+            _dragging = false;
+            ReleaseMouseCapture();
         }
 
-        _dragging = false;
-        ReleaseMouseCapture();
         e.Handled = true;
     }
 
