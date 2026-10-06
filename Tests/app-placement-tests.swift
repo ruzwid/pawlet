@@ -67,5 +67,26 @@ enum AppPlacementTests {
         AppPlacement.clearSizeInActiveSlot(defaults: defaults, petID: "mochi-sample", appBundleID: nil, selfBundleID: selfID)
         try ProjectTests.require(defaults.object(forKey: "pet.mochi-sample.size") == nil,
             "Clearing with no trackable app must remove pet-level size")
+
+        let safe = NSRect(x: 0, y: 0, width: 1000, height: 800)
+        let size = NSSize(width: 192, height: 208)
+        let flushTop = NSPoint(x: 10, y: safe.maxY - size.height)
+        try ProjectTests.require(
+            AppPlacement.clampedOrigin(origin: flushTop, size: size, safe: safe) == flushTop,
+            "Flush-top origin must stay put when already inside the safe area")
+        try ProjectTests.require(
+            AppPlacement.frameFitsSafeArea(NSRect(origin: flushTop, size: size), safe: safe),
+            "Flush-top frame must count as fitting")
+        let slightlyOver = NSPoint(x: 10, y: safe.maxY - size.height + 0.25)
+        try ProjectTests.require(
+            AppPlacement.frameFitsSafeArea(NSRect(origin: slightlyOver, size: size), safe: safe),
+            "Sub-point top overflow within slop must still count as fitting")
+        let wayOver = NSPoint(x: 10, y: safe.maxY - size.height + 8)
+        let clampedOver = AppPlacement.clampedOrigin(origin: wayOver, size: size, safe: safe)
+        try ProjectTests.require(clampedOver.y == flushTop.y,
+            "Large top overflow must clamp back to the flush-top origin")
+        try ProjectTests.require(
+            !AppPlacement.frameFitsSafeArea(NSRect(origin: wayOver, size: size), safe: safe),
+            "Large top overflow must not count as fitting")
     }
 }

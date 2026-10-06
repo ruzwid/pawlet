@@ -79,16 +79,23 @@ final class DesktopPet: NSObject {
 
     func applyOptions() {
         guard let owner = owner else { return }
+        applyPanelChrome()
+        let origin = panel.frame.origin
+        let scale = CGFloat(owner.miniSize(for: atlas.id))
+        panel.setFrame(NSRect(x: origin.x, y: origin.y, width: 192 * scale, height: 208 * scale), display: true)
+        clampToScreen()
+    }
+
+    private func applyPanelChrome() {
+        guard let owner = owner else { return }
         panel.level = owner.settings.alwaysOnTop ? .floating : .normal
         panel.ignoresMouseEvents = owner.settings.clickThrough
         if placementTransition == nil {
             panel.alphaValue = CGFloat(owner.settings.opacity)
         }
-        panel.collectionBehavior = owner.settings.allSpaces ? [.canJoinAllSpaces, .fullScreenAuxiliary, .stationary] : [.fullScreenAuxiliary, .stationary]
-        let origin = panel.frame.origin
-        let scale = CGFloat(owner.miniSize(for: atlas.id))
-        panel.setFrame(NSRect(x: origin.x, y: origin.y, width: 192 * scale, height: 208 * scale), display: true)
-        clampToScreen()
+        panel.collectionBehavior = owner.settings.allSpaces
+            ? [.canJoinAllSpaces, .fullScreenAuxiliary, .stationary]
+            : [.fullScreenAuxiliary, .stationary]
     }
 
     func setVisible(_ show: Bool) {
@@ -105,12 +112,26 @@ final class DesktopPet: NSObject {
 
     func clampToScreen() {
         let frame = panel.frame
-        let screen = NSScreen.screens.max(by: { intersectionArea($0.visibleFrame, frame) < intersectionArea($1.visibleFrame, frame) }) ?? NSScreen.main
-        guard let screen = screen else { return }
-        let safe = screen.visibleFrame
-        let point = NSPoint(x: min(max(frame.minX, safe.minX), max(safe.minX, safe.maxX - frame.width)),
-                            y: min(max(frame.minY, safe.minY), max(safe.minY, safe.maxY - frame.height)))
+        guard let safe = preferredSafeFrame(for: frame) else { return }
+        let point = AppPlacement.clampedOrigin(origin: frame.origin, size: frame.size, safe: safe)
         panel.setFrameOrigin(point)
+    }
+
+    /// Clamps only when the frame sits meaningfully outside the safe area.
+    /// Avoids walking a flush-top mini down on every per-app restore (float / edge noise).
+    private func clampToScreenIfNeeded() {
+        let frame = panel.frame
+        guard let safe = preferredSafeFrame(for: frame) else { return }
+        if AppPlacement.frameFitsSafeArea(frame, safe: safe) { return }
+        let point = AppPlacement.clampedOrigin(origin: frame.origin, size: frame.size, safe: safe)
+        panel.setFrameOrigin(point)
+    }
+
+    private func preferredSafeFrame(for frame: NSRect) -> NSRect? {
+        let screen = NSScreen.screens.max(by: {
+            intersectionArea($0.visibleFrame, frame) < intersectionArea($1.visibleFrame, frame)
+        }) ?? NSScreen.main
+        return screen?.visibleFrame
     }
 
     private func intersectionArea(_ a: NSRect, _ b: NSRect) -> CGFloat {
@@ -152,11 +173,20 @@ final class DesktopPet: NSObject {
     }
 
     private func applyRememberedPlacementNow(origin: NSPoint?) {
+        guard let owner = owner else { return }
+        applyPanelChrome()
+        let scale = CGFloat(owner.miniSize(for: atlas.id))
+        let size = NSSize(width: 192 * scale, height: 208 * scale)
         if let origin {
             wanderTarget = nil
-            panel.setFrameOrigin(origin)
+            // Size + origin in one setFrame, then clamp only if outside. Always clamping
+            // after restore walked flush-top minis down a few points on each Cmd-Tab.
+            panel.setFrame(NSRect(origin: origin, size: size), display: true)
+            clampToScreenIfNeeded()
+        } else {
+            panel.setFrame(NSRect(origin: panel.frame.origin, size: size), display: true)
+            clampToScreen()
         }
-        applyOptions()
     }
 
     /// Global origin always. Per-app origin only when `stampAppSlot` (user drag or reset), never wander/sleep/hide.

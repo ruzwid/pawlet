@@ -7,6 +7,19 @@ enum AppPlacement {
         return true
     }
 
+    /// Bottom-left origin that keeps `size` inside `safe` (AppKit coords).
+    static func clampedOrigin(origin: NSPoint, size: NSSize, safe: NSRect) -> NSPoint {
+        NSPoint(
+            x: min(max(origin.x, safe.minX), max(safe.minX, safe.maxX - size.width)),
+            y: min(max(origin.y, safe.minY), max(safe.minY, safe.maxY - size.height)))
+    }
+
+    /// True when the frame fits in `safe`, allowing `slop` points of float/edge noise.
+    static func frameFitsSafeArea(_ frame: NSRect, safe: NSRect, slop: CGFloat = 0.5) -> Bool {
+        let padded = safe.insetBy(dx: -slop, dy: -slop)
+        return padded.contains(frame)
+    }
+
     /// Always updates `pet.<id>.x` / `.y`. Does not touch per-app keys.
     static func writeGlobalOrigin(defaults: UserDefaults, petID: String, origin: NSPoint) {
         defaults.set(Double(origin.x), forKey: "pet.\(petID).x")
