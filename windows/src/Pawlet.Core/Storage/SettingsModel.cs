@@ -17,6 +17,7 @@ public sealed class SettingsModel : INotifyPropertyChanged
     private double _animationIntervalSeconds = MotionConstants.DefaultIntervalSeconds;
     private bool _clickThrough;
     private bool _startWithWindows;
+    private bool _rememberPlacePerApp;
 
     public event PropertyChangedEventHandler? PropertyChanged;
 
@@ -81,6 +82,13 @@ public sealed class SettingsModel : INotifyPropertyChanged
     {
         get => _startWithWindows;
         set => SetField(ref _startWithWindows, value);
+    }
+
+    [JsonPropertyName("rememberPlacePerApp")]
+    public bool RememberPlacePerApp
+    {
+        get => _rememberPlacePerApp;
+        set => SetField(ref _rememberPlacePerApp, value);
     }
 
     /// <summary>Clamp numeric fields after deserialize (partial JSON / out-of-range).</summary>
