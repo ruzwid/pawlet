@@ -128,15 +128,9 @@ final class DesktopPet: NSObject {
     }
 
     private func preferredSafeFrame(for frame: NSRect) -> NSRect? {
-        let screen = NSScreen.screens.max(by: {
-            intersectionArea($0.visibleFrame, frame) < intersectionArea($1.visibleFrame, frame)
-        }) ?? NSScreen.main
-        return screen?.visibleFrame
-    }
-
-    private func intersectionArea(_ a: NSRect, _ b: NSRect) -> CGFloat {
-        let i = a.intersection(b)
-        return i.isNull ? 0 : i.width * i.height
+        let candidates = NSScreen.screens.map(\.visibleFrame)
+        return AppPlacement.preferredSafeFrame(for: frame, candidates: candidates)
+            ?? NSScreen.main?.visibleFrame
     }
 
     func applyRememberedPlacement(bundleID: String, animated: Bool = true) {

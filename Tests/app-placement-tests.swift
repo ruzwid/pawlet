@@ -88,5 +88,20 @@ enum AppPlacementTests {
         try ProjectTests.require(
             !AppPlacement.frameFitsSafeArea(NSRect(origin: wayOver, size: size), safe: safe),
             "Large top overflow must not count as fitting")
+
+        let primary = NSRect(x: 0, y: 0, width: 1920, height: 1080)
+        let secondary = NSRect(x: 1920, y: 0, width: 1920, height: 1080)
+        let onSecondary = NSRect(x: 2500, y: 100, width: size.width, height: size.height)
+        try ProjectTests.require(
+            AppPlacement.preferredSafeFrame(for: onSecondary, candidates: [primary, secondary]) == secondary,
+            "Preferred safe frame must pick the monitor that contains the mini")
+        let onPrimary = NSRect(x: 40, y: 60, width: size.width, height: size.height)
+        try ProjectTests.require(
+            AppPlacement.preferredSafeFrame(for: onPrimary, candidates: [primary, secondary]) == primary,
+            "Preferred safe frame must keep a primary-monitor mini on primary")
+        let disconnected = NSRect(x: 5000, y: 100, width: size.width, height: size.height)
+        try ProjectTests.require(
+            AppPlacement.preferredSafeFrame(for: disconnected, candidates: [primary, secondary]) == secondary,
+            "Disconnected-monitor coords must fall back to the nearest screen")
     }
 }
