@@ -106,6 +106,16 @@ The build has no downloaded Swift dependencies. By default it compiles a univers
 
 Read [CONTRIBUTING.md](CONTRIBUTING.md) and the [architecture](docs/architecture.md). GitHub Actions checks both Mac architectures; manual release builds are uploaded as workflow artifacts and do not publish a release automatically. All local user data stays in `~/Library/Application Support/Pawlet/`. No accounts, telemetry, server, API key or accessibility/screen-recording permission is needed to run pets.
 
+## Windows (preview)
+
+Requires Windows and the .NET 8 SDK. From the repo root:
+
+```sh
+dotnet run --project windows/src/Pawlet -c Release
+```
+
+Preferences live in `%AppData%\Pawlet\settings.json`. **Start with Windows** writes a CurrentUser `Run` value named `Pawlet`. To disable it: uncheck the option in the library Settings panel, or delete `HKCU\Software\Microsoft\Windows\CurrentVersion\Run\Pawlet` in Registry Editor. Full Windows non-goals and build notes land in a follow-up docs pass.
+
 ## Next milestones
 
 - Sign and notarize the public release; publish versioned GitHub downloads.
