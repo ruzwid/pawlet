@@ -47,6 +47,7 @@ final class DesktopPet: NSObject {
     private var placementTransition: UUID?
     var visible: Bool { panel.isVisible }
     var isDragging: Bool { dragging }
+    var panelFrame: NSRect { panel.frame }
 
     init(atlas: SpriteAtlas, owner: AppDelegate, index: Int) {
         self.atlas = atlas
@@ -189,7 +190,7 @@ final class DesktopPet: NSObject {
         let origin = NSPoint(x: panel.frame.minX, y: panel.frame.minY)
         AppPlacement.writeGlobalOrigin(defaults: owner.defaults, petID: atlas.id, origin: origin)
         guard stampAppSlot, owner.settings.rememberPlacePerApp else { return }
-        let appBundleID = dragPlacementAppBundleID ?? owner.placementAppBundleID()
+        let appBundleID = dragPlacementAppBundleID ?? owner.placementAppBundleID(forPetFrame: panel.frame)
         guard let appBundleID else { return }
         AppPlacement.writeAppOrigin(defaults: owner.defaults, petID: atlas.id, origin: origin,
             bundleID: appBundleID, selfBundleID: Bundle.main.bundleIdentifier)
@@ -197,7 +198,7 @@ final class DesktopPet: NSObject {
 
     func beginDrag(_ event: NSEvent) {
         dragging = true; dragged = false; wanderTarget = nil
-        dragPlacementAppBundleID = owner?.placementAppBundleID()
+        dragPlacementAppBundleID = owner?.placementAppBundleID(forPetFrame: panel.frame)
         let mouse = NSEvent.mouseLocation
         grab = NSPoint(x: mouse.x - panel.frame.minX, y: mouse.y - panel.frame.minY)
         dragStart = mouse; lastMouse = mouse

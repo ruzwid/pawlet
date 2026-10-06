@@ -46,7 +46,7 @@ struct SettingsView: View {
                     Toggle("Show on all desktop Spaces", isOn: $app.settings.allSpaces)
                     Toggle("Let clicks pass through minis", isOn: $app.settings.clickThrough)
                     Toggle("Remember place per app", isOn: $app.settings.rememberPlacePerApp)
-                    hint("When you drag or resize a mini while an app is frontmost, switching back restores that place and size with a short fade. Wandering does not change a saved place. Apps without a saved place leave the mini where it is. Apps without a saved size use this mini's usual size. Reduce Motion skips the fade.")
+                    hint("Restore follows the topmost fullscreen app on the mini’s monitor, or else the topmost window on that monitor. Dragging or resizing a mini while that app is active saves its place and size; switching back restores with a short fade. Wandering does not change a saved place. Apps without a saved place leave the mini where it is. Apps without a saved size use this mini's usual size. Reduce Motion skips the fade.")
                     Button("Bring minis back to this screen") { app.resetPositions() }.buttonStyle(PawletActionStyle())
                 }
                 settingsSection("App") {
