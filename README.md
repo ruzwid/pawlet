@@ -124,7 +124,9 @@ dotnet run --project windows/src/Pawlet -c Release -- --import path\to\Mochi.pet
 
 An empty library seeds bundled Mochi on first run and opens the library window. The tray offers Show library, Show all, Hide all, Pause, and Quit. Closing the library keeps desktop minis running; Quit hides pets, then exits.
 
-Data lives under `%AppData%\Pawlet\` (`Library\<id>\` for packs, `settings.json` for preferences). **Start with Windows** writes a CurrentUser `Run` value named `Pawlet`. To disable it: uncheck the option in the library Settings panel, turn it off in Task Manager → Startup apps, or delete `HKCU\Software\Microsoft\Windows\CurrentVersion\Run\Pawlet` in Registry Editor.
+Data lives under `%AppData%\Pawlet\` (`Library\<id>\` for packs, `settings.json` for preferences, `placements.json` for desktop origin and size). **Start with Windows** writes a CurrentUser `Run` value named `Pawlet`. To disable it: uncheck the option in the library Settings panel, turn it off in Task Manager → Startup apps, or delete `HKCU\Software\Microsoft\Windows\CurrentVersion\Run\Pawlet` in Registry Editor.
+
+**Remember place per app** (Settings, off by default) stores each mini’s origin and size per frontmost app in `%AppData%\Pawlet\placements.json`. Drag under an app to stamp that slot; switching back restores it. The restore fades when Windows client-area animation is on (`SystemParameters.ClientAreaAnimation`); otherwise it snaps. Right-click a desktop mini for **Size** (25%–175% steps, or Use default size). Library focus is Pawlet itself and does not write other apps’ slots.
 
 **MVP non-goals.** This preview is unsigned (no Microsoft Store or code-signing pipeline). It does not include Codex Create, Export for Codex / `.petpack` export, full Mac Settings parity (Spaces, Dock visibility, animation preview inspector), WinUI or Tauri pet hosts, an installer (MSIX/EXE), or gaze polish beyond the animation engine port. Packs are data only; import rejects path traversal and other unsafe ZIP entries.
 
