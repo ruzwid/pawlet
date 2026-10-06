@@ -16,6 +16,7 @@ public partial class App : Application
     };
 
     private PetRuntime? _runtime;
+    private AppTray? _tray;
 
     protected override void OnStartup(StartupEventArgs e)
     {
@@ -24,6 +25,8 @@ public partial class App : Application
         _runtime = new PetRuntime();
         Exit += (_, _) =>
         {
+            _tray?.Dispose();
+            _tray = null;
             _runtime?.Dispose();
             _runtime = null;
         };
@@ -32,7 +35,18 @@ public partial class App : Application
         {
             HandleCli(e.Args);
             EnsureSampleSeeded();
-            ShowFirstLibraryPet();
+            if (!ShowFirstLibraryPet())
+            {
+                Shutdown(0);
+                return;
+            }
+
+            _tray = new AppTray(
+                showAll: ShowAllLibraryPets,
+                hideAll: () => _runtime!.HideAll(),
+                isPaused: () => _runtime!.Paused,
+                setPaused: paused => _runtime!.Paused = paused,
+                quit: OnQuit);
         }
         catch (Exception ex)
         {
@@ -96,7 +110,7 @@ public partial class App : Application
         CopyDirectory(sample, dest);
     }
 
-    private void ShowFirstLibraryPet()
+    private bool ShowFirstLibraryPet()
     {
         var first = EnumeratePets(LibraryPaths.DefaultRoot).FirstOrDefault();
         if (first is null)
@@ -106,11 +120,25 @@ public partial class App : Application
                 "Pawlet",
                 MessageBoxButton.OK,
                 MessageBoxImage.Information);
-            Shutdown(0);
-            return;
+            return false;
         }
 
         _runtime!.Show(first);
+        return true;
+    }
+
+    private void ShowAllLibraryPets()
+    {
+        foreach (var dir in EnumeratePets(LibraryPaths.DefaultRoot))
+        {
+            _runtime!.Show(dir);
+        }
+    }
+
+    private void OnQuit()
+    {
+        _runtime?.HideAll();
+        Shutdown();
     }
 
     private static IEnumerable<string> EnumeratePets(string libraryRoot)

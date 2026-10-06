@@ -16,6 +16,21 @@ public sealed class PetRuntime : IDisposable
 
     private readonly Dictionary<string, Entry> _open = new(StringComparer.OrdinalIgnoreCase);
     private bool _disposed;
+    private bool _paused;
+
+    public bool Paused
+    {
+        get => _paused;
+        set
+        {
+            ObjectDisposedException.ThrowIf(_disposed, this);
+            _paused = value;
+            foreach (var entry in _open.Values)
+            {
+                entry.Window.Paused = value;
+            }
+        }
+    }
 
     public void Show(string libraryPetDir)
     {
@@ -58,6 +73,7 @@ public sealed class PetRuntime : IDisposable
         window.Left = SystemParameters.WorkArea.Right - AtlasSheet.CellWidth - 24 - index * 200;
         window.Top = SystemParameters.WorkArea.Bottom - AtlasSheet.CellHeight - 18;
 
+        window.Paused = _paused;
         _open[full] = new Entry(window, atlas);
         window.Show();
     }
