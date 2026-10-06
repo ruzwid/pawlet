@@ -1,8 +1,10 @@
+using System.ComponentModel;
 using System.IO;
 using System.Text.Json;
 using System.Windows;
 using Pawlet.Core.Packs;
 using Pawlet.Core.Storage;
+using Pawlet.Library;
 using Pawlet.Pets;
 
 namespace Pawlet;
@@ -17,6 +19,9 @@ public partial class App : Application
 
     private PetRuntime? _runtime;
     private AppTray? _tray;
+    private SettingsModel _settings = new();
+    private LibraryWindow? _library;
+    private bool _applyingSettings;
 
     protected override void OnStartup(StartupEventArgs e)
     {
@@ -27,6 +32,7 @@ public partial class App : Application
         {
             _tray?.Dispose();
             _tray = null;
+            _library = null;
             _runtime?.Dispose();
             _runtime = null;
         };
@@ -35,15 +41,31 @@ public partial class App : Application
         {
             HandleCli(e.Args);
             EnsureSampleSeeded();
-            if (!ShowFirstLibraryPet())
+
+            _settings = SettingsStore.Load();
+            _applyingSettings = true;
+            _runtime.ApplySettings(_settings);
+            _applyingSettings = false;
+            _settings.PropertyChanged += OnSettingsChanged;
+
+            var pets = EnumeratePets(LibraryPaths.DefaultRoot).ToList();
+            if (pets.Count > 0)
             {
-                Shutdown(0);
-                return;
+                _runtime.Show(pets[0]);
+            }
+            else
+            {
+                ShowLibrary();
             }
 
             _tray = new AppTray(
+                showLibrary: ShowLibrary,
                 showAll: ShowAllLibraryPets,
-                hideAll: () => _runtime!.HideAll(),
+                hideAll: () =>
+                {
+                    _runtime!.HideAll();
+                    _library?.RefreshPets();
+                },
                 isPaused: () => _runtime!.Paused,
                 setPaused: paused => _runtime!.Paused = paused,
                 quit: OnQuit);
@@ -53,6 +75,49 @@ public partial class App : Application
             MessageBox.Show(ex.Message, "Pawlet", MessageBoxButton.OK, MessageBoxImage.Error);
             Shutdown(1);
         }
+    }
+
+    private void OnSettingsChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (_applyingSettings || _runtime is null)
+        {
+            return;
+        }
+
+        // Pause may already be applied via PetRuntime.Paused; still push full settings.
+        _applyingSettings = true;
+        try
+        {
+            _runtime.ApplySettings(_settings);
+            PersistSettings();
+        }
+        finally
+        {
+            _applyingSettings = false;
+        }
+    }
+
+    private void PersistSettings()
+    {
+        SettingsStore.Save(_settings);
+    }
+
+    private void ShowLibrary()
+    {
+        if (_runtime is null)
+        {
+            return;
+        }
+
+        if (_library is null)
+        {
+            _library = new LibraryWindow(_runtime, _settings);
+            _library.Closed += (_, _) => _library = null;
+        }
+
+        _library.RefreshPets();
+        _library.Show();
+        _library.Activate();
     }
 
     private void HandleCli(string[] args)
@@ -110,33 +175,21 @@ public partial class App : Application
         CopyDirectory(sample, dest);
     }
 
-    private bool ShowFirstLibraryPet()
-    {
-        var first = EnumeratePets(LibraryPaths.DefaultRoot).FirstOrDefault();
-        if (first is null)
-        {
-            MessageBox.Show(
-                "No minis in the library yet. Run with --import path.petpack, or place a mini under %AppData%\\Pawlet\\Library.",
-                "Pawlet",
-                MessageBoxButton.OK,
-                MessageBoxImage.Information);
-            return false;
-        }
-
-        _runtime!.Show(first);
-        return true;
-    }
-
     private void ShowAllLibraryPets()
     {
         foreach (var dir in EnumeratePets(LibraryPaths.DefaultRoot))
         {
             _runtime!.Show(dir);
         }
+
+        _library?.RefreshPets();
     }
 
     private void OnQuit()
     {
+        _settings.PropertyChanged -= OnSettingsChanged;
+        PersistSettings();
+        _library?.Close();
         _runtime?.HideAll();
         Shutdown();
     }

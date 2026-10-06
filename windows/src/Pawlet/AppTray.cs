@@ -1,9 +1,6 @@
 using System.Drawing;
 using System.Windows.Forms;
 using WpfApp = System.Windows.Application;
-using WpfMessageBox = System.Windows.MessageBox;
-using WpfMessageBoxButton = System.Windows.MessageBoxButton;
-using WpfMessageBoxImage = System.Windows.MessageBoxImage;
 
 namespace Pawlet;
 
@@ -18,12 +15,14 @@ public sealed class AppTray : IDisposable
     private bool _disposed;
 
     public AppTray(
+        Action showLibrary,
         Action showAll,
         Action hideAll,
         Func<bool> isPaused,
         Action<bool> setPaused,
         Action quit)
     {
+        ArgumentNullException.ThrowIfNull(showLibrary);
         ArgumentNullException.ThrowIfNull(showAll);
         ArgumentNullException.ThrowIfNull(hideAll);
         ArgumentNullException.ThrowIfNull(isPaused);
@@ -42,7 +41,7 @@ public sealed class AppTray : IDisposable
         _pauseItem.Click += (_, _) => Dispatch(() => _setPaused(_pauseItem.Checked));
 
         var menu = new ContextMenuStrip();
-        menu.Items.Add("Show library", null, (_, _) => Dispatch(ShowLibraryStub));
+        menu.Items.Add("Show library", null, (_, _) => Dispatch(showLibrary));
         menu.Items.Add("Show all", null, (_, _) => Dispatch(showAll));
         menu.Items.Add("Hide all", null, (_, _) => Dispatch(hideAll));
         menu.Items.Add(_pauseItem);
@@ -70,15 +69,6 @@ public sealed class AppTray : IDisposable
         _icon.Visible = false;
         _icon.Dispose();
         _ownedIcon.Dispose();
-    }
-
-    private static void ShowLibraryStub()
-    {
-        WpfMessageBox.Show(
-            "Library UI is not in this build yet.",
-            "Pawlet",
-            WpfMessageBoxButton.OK,
-            WpfMessageBoxImage.Information);
     }
 
     private static void Dispatch(Action action)

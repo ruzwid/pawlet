@@ -45,10 +45,15 @@ public static class PetStateExtensions
 
 public readonly record struct SpriteFrame(int Row, int Column);
 
-/// <summary>Minimal greet reactions; Wave maps to <see cref="PetState.Waving"/>.</summary>
+/// <summary>Greet reactions aligned with Mac; each maps to a <see cref="PetState"/> row.</summary>
 public enum HoverReaction
 {
     Wave,
+    Hop,
+    Waiting,
+    Working,
+    Reviewing,
+    Oops,
 }
 
 public static class HoverReactionExtensions
@@ -56,6 +61,22 @@ public static class HoverReactionExtensions
     public static PetState State(this HoverReaction reaction) => reaction switch
     {
         HoverReaction.Wave => PetState.Waving,
+        HoverReaction.Hop => PetState.Jumping,
+        HoverReaction.Waiting => PetState.Waiting,
+        HoverReaction.Working => PetState.Working,
+        HoverReaction.Reviewing => PetState.Review,
+        HoverReaction.Oops => PetState.Failed,
         _ => throw new ArgumentOutOfRangeException(nameof(reaction), reaction, null),
+    };
+
+    public static string Title(this HoverReaction reaction) => reaction switch
+    {
+        HoverReaction.Wave => "Wave",
+        HoverReaction.Hop => "Hop toward you",
+        HoverReaction.Waiting => "Waiting",
+        HoverReaction.Working => "Working",
+        HoverReaction.Reviewing => "Reviewing",
+        HoverReaction.Oops => "Oops",
+        _ => reaction.ToString(),
     };
 }
