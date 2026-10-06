@@ -1,0 +1,19 @@
+{
+  "color": {
+    "canvas": {"light": "#F8F8F2", "dark": "#181818"},
+    "surface": {"light": "#FFFFFB", "dark": "#262626"},
+    "stage": {"light": "#F0F1E6", "dark": "#303030"},
+    "secondary": {"light": "#66685D", "dark": "#B7B7B7"},
+    "border": {"light": "#DDDED4", "dark": "#404040"},
+    "accent": {"light": "#627000", "dark": "#C1CF77"},
+    "button": {"light": "#627000", "dark": "#B5C55C"},
+    "controlHighlight": {"light": "#292A25", "dark": "#FFFFFF"},
+    "buttonInk": {"light": "#FFFFFB", "dark": "#232323"},
+    "ink": {"light": "#292A25", "dark": "#ECECEC"},
+    "sidebar": {"light": "#F1F2E9", "dark": "#202020"},
+    "switchOff": {"light": "#E2E4D8", "dark": "#373737"},
+    "switchBorder": {"light": "#7A7D73", "dark": "#808080"},
+    "switchThumbOn": {"light": "#FFFFFB", "dark": "#181818"},
+    "switchThumbOff": {"light": "#73766A", "dark": "#C4C4C4"}
+  }
+}
