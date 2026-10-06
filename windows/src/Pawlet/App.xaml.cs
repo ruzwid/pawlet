@@ -91,6 +91,10 @@ public partial class App : Application
             _runtime.ApplySettings(_settings);
             PersistSettings();
         }
+        catch (Exception ex)
+        {
+            MessageBox.Show(ex.Message, "Pawlet", MessageBoxButton.OK, MessageBoxImage.Warning);
+        }
         finally
         {
             _applyingSettings = false;

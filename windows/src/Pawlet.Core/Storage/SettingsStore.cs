@@ -42,6 +42,10 @@ public static class SettingsStore
         {
             return new SettingsModel();
         }
+        catch (UnauthorizedAccessException)
+        {
+            return new SettingsModel();
+        }
     }
 
     public static void Save(SettingsModel settings, string? path = null)

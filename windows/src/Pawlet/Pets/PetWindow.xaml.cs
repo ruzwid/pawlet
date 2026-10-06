@@ -11,6 +11,7 @@ public partial class PetWindow : Window
     private readonly AtlasSheet _atlas;
     private readonly AnimationEngine _engine = new();
     private readonly DispatcherTimer _timer;
+    private readonly HitTestAttachment _hitTest;
     private SpriteFrame _currentFrame = new(0, 0);
     private Point _dragOffset;
     private Point _dragStart;
@@ -29,7 +30,7 @@ public partial class PetWindow : Window
         ApplyScale(_scale);
         SpriteImage.Source = _atlas.Frame(_currentFrame);
 
-        HitTest.Attach(this, SampleAlpha);
+        _hitTest = HitTestAttachment.Attach(this, SampleAlpha);
 
         _timer = new DispatcherTimer(DispatcherPriority.Render)
         {
@@ -77,6 +78,7 @@ public partial class PetWindow : Window
         }
 
         _alive = false;
+        _hitTest.Dispose();
         _timer.Stop();
         _timer.Tick -= OnTick;
         SpriteImage.Source = null;

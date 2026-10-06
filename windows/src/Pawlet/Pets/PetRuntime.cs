@@ -19,6 +19,7 @@ public sealed class PetRuntime : IDisposable
     private SettingsModel _settings = new();
     private bool _disposed;
     private bool _paused;
+    private bool? _startWithWindowsApplied;
 
     public bool Paused
     {
@@ -46,7 +47,11 @@ public sealed class PetRuntime : IDisposable
             ApplyToWindow(entry.Window);
         }
 
-        StartupRegistration.Apply(settings.StartWithWindows);
+        if (_startWithWindowsApplied != settings.StartWithWindows)
+        {
+            StartupRegistration.Apply(settings.StartWithWindows);
+            _startWithWindowsApplied = settings.StartWithWindows;
+        }
     }
 
     public bool IsOpen(string libraryPetDir)
