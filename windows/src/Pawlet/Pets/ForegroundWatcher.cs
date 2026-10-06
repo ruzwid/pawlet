@@ -41,6 +41,35 @@ public sealed class ForegroundWatcher : IDisposable
         {
             _hook = IntPtr.Zero;
         }
+
+        // Hook only fires on changes; seed so restore/stamp work before the first Alt-Tab.
+        SeedCurrentForeground();
+    }
+
+    private void SeedCurrentForeground()
+    {
+        if (_disposed)
+        {
+            return;
+        }
+
+        // Always queue: App subscribes to Changed after `new ForegroundWatcher()`.
+        var dispatcher = Application.Current?.Dispatcher;
+        if (dispatcher is null)
+        {
+            return;
+        }
+
+        dispatcher.BeginInvoke(new Action(() =>
+        {
+            if (_disposed)
+            {
+                return;
+            }
+
+            var foreground = GetForegroundWindow();
+            RaiseChanged(foreground == IntPtr.Zero ? null : ResolvePath(foreground));
+        }));
     }
 
     public void Dispose()
