@@ -219,6 +219,8 @@ final class DesktopPet: NSObject {
         dragging = false; dragState = nil
         if dragged {
             clampToScreen()
+            // Drop stamp must use the destination monitor's top app, not the mid-drag pin.
+            dragPlacementAppBundleID = nil
             savePosition(stampAppSlot: true)
             engine.perform(.idle, now: ProcessInfo.processInfo.systemUptime, seconds: 0.25)
         } else if owner?.settings.animateInteractions == true {

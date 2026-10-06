@@ -3,6 +3,19 @@ import AppKit
 enum AppPlacementTests {
     static func run() throws {
         let selfID = "com.ruzwid.pawlet"
+
+        // Quartz top-left → AppKit bottom-left on a 1080-tall primary display.
+        let quartz = CGRect(x: 100, y: 50, width: 800, height: 600)
+        let flipped = MonitorFrontApp.appKitRect(fromQuartzBounds: quartz, primaryHeight: 1080)
+        try ProjectTests.require(flipped.origin.x == 100 && flipped.size.width == 800 && flipped.size.height == 600,
+            "Quartz→AppKit must preserve x and size")
+        try ProjectTests.require(flipped.origin.y == 1080 - 50 - 600,
+            "Quartz→AppKit must flip y as primaryHeight - yQuartz - height")
+        let flushTopQuartz = CGRect(x: 0, y: 0, width: 1920, height: 1080)
+        let flushTopApp = MonitorFrontApp.appKitRect(fromQuartzBounds: flushTopQuartz, primaryHeight: 1080)
+        try ProjectTests.require(flushTopApp == NSRect(x: 0, y: 0, width: 1920, height: 1080),
+            "A full primary Quartz frame must map to the AppKit primary frame")
+
         try ProjectTests.require(!AppPlacement.isTrackable(bundleID: nil, selfBundleID: selfID), "Nil bundle must not be trackable")
         try ProjectTests.require(!AppPlacement.isTrackable(bundleID: "", selfBundleID: selfID), "Empty bundle must not be trackable")
         try ProjectTests.require(!AppPlacement.isTrackable(bundleID: selfID, selfBundleID: selfID), "Pawlet must not be a placement slot")

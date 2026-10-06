@@ -39,8 +39,26 @@ enum MonitorFrontApp {
         guard let dict = entry[kCGWindowBounds as String] as? [String: Any] else { return nil }
         var rect = CGRect.zero
         guard CGRectMakeWithDictionaryRepresentation(dict as CFDictionary, &rect) else { return nil }
-        // CGWindow bounds use origin at bottom-left of the primary display (same as Cocoa global).
-        return NSRect(x: rect.origin.x, y: rect.origin.y, width: rect.size.width, height: rect.size.height)
+        // CGWindowList bounds are Quartz global: origin at the top-left of the primary display.
+        // AppKit screen/window frames use bottom-left of that same display.
+        return appKitRect(fromQuartzBounds: rect, primaryHeight: primaryDisplayHeight)
+    }
+
+    /// Pure Quartz→AppKit flip: `yApp = primaryHeight - yQuartz - height`.
+    static func appKitRect(fromQuartzBounds quartz: CGRect, primaryHeight: CGFloat) -> NSRect {
+        NSRect(
+            x: quartz.origin.x,
+            y: primaryHeight - quartz.origin.y - quartz.size.height,
+            width: quartz.size.width,
+            height: quartz.size.height)
+    }
+
+    /// Height of the display whose AppKit frame origin is (0, 0) (Quartz primary).
+    private static var primaryDisplayHeight: CGFloat {
+        if let primary = NSScreen.screens.first(where: { $0.frame.origin == .zero }) {
+            return primary.frame.height
+        }
+        return NSScreen.main?.frame.height ?? NSScreen.screens.first?.frame.height ?? 0
     }
 
     private static func isFullscreen(bounds: NSRect) -> Bool {

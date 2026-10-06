@@ -265,15 +265,23 @@ final class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject {
         MonitorFrontApp.preferredBundleID(forPetFrame: frame, selfBundleID: Bundle.main.bundleIdentifier)
     }
 
-    /// Legacy name used by Size menu when no pet frame is handy: resolve using main screen center.
+    /// Main-screen center fallback when no visible pet frame is available (Library / hidden mini).
     func placementAppBundleID() -> String? {
         let screen = NSScreen.main ?? NSScreen.screens.first
         let frame = screen.map { NSRect(x: $0.frame.midX, y: $0.frame.midY, width: 1, height: 1) } ?? .zero
         return placementAppBundleID(forPetFrame: frame)
     }
 
+    /// Prefer the visible mini's monitor top app; else main-screen / pet-level fallback.
+    func placementAppBundleID(forPetID id: String) -> String? {
+        if let pet = pets.first(where: { $0.atlas.id == id && $0.visible }) {
+            return placementAppBundleID(forPetFrame: pet.panelFrame)
+        }
+        return placementAppBundleID()
+    }
+
     func sizeOverride(for id: String) -> Double? {
-        if settings.rememberPlacePerApp, let bundleID = placementAppBundleID() {
+        if settings.rememberPlacePerApp, let bundleID = placementAppBundleID(forPetID: id) {
             return AppPlacement.rememberedSize(defaults: defaults, petID: id, bundleID: bundleID)
         }
         guard let value = defaults.object(forKey: "pet.\(id).size") as? NSNumber,
@@ -283,12 +291,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject {
 
     func miniSize(for id: String) -> Double {
         AppPlacement.resolvedSize(defaults: defaults, petID: id, settingsSize: settings.size,
-            rememberPlacePerApp: settings.rememberPlacePerApp, appBundleID: placementAppBundleID(),
+            rememberPlacePerApp: settings.rememberPlacePerApp, appBundleID: placementAppBundleID(forPetID: id),
             selfBundleID: Bundle.main.bundleIdentifier)
     }
 
     func setSizeOverride(_ size: Double?, for id: String) {
-        let appBundleID = settings.rememberPlacePerApp ? placementAppBundleID() : nil
+        let appBundleID = settings.rememberPlacePerApp ? placementAppBundleID(forPetID: id) : nil
         if let size = size {
             AppPlacement.writeSizeInActiveSlot(defaults: defaults, petID: id, size: size, appBundleID: appBundleID,
                 selfBundleID: Bundle.main.bundleIdentifier)
