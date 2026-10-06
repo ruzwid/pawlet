@@ -120,4 +120,66 @@ public class PlacementGeometryTests
             workAreas: [primary, secondary]);
         Assert.Equal(secondary, preferred);
     }
+
+    private const string SelfKey = @"C:\Apps\Pawlet\Pawlet.exe";
+    private const string CursorKey = @"C:\Apps\Cursor\Cursor.exe";
+    private const string ChromeKey = @"C:\Program Files\Google\Chrome\Application\chrome.exe";
+    private const string SlackKey = @"C:\Apps\Slack\slack.exe";
+
+    [Fact]
+    public void PreferredAppKey_fullscreen_beats_windowed_on_same_monitor()
+    {
+        var cursorFs = new PlacementWindowCandidate(
+            CursorKey, 0, 0, 1920, 1080, ZOrder: 1, IsFullscreen: true);
+        var chromeWin = new PlacementWindowCandidate(
+            ChromeKey, 100, 100, 900, 700, ZOrder: 0, IsFullscreen: false);
+        Assert.Equal(
+            CursorKey,
+            PlacementGeometry.PreferredAppKey(0, 0, 1920, 1080, [chromeWin, cursorFs], SelfKey));
+    }
+
+    [Fact]
+    public void PreferredAppKey_ignores_fullscreen_on_other_monitor()
+    {
+        var cursorFs = new PlacementWindowCandidate(
+            CursorKey, 0, 0, 1920, 1080, ZOrder: 1, IsFullscreen: true);
+        var chromeOther = new PlacementWindowCandidate(
+            ChromeKey, 2000, 100, 2800, 700, ZOrder: 0, IsFullscreen: true);
+        Assert.Equal(
+            CursorKey,
+            PlacementGeometry.PreferredAppKey(0, 0, 1920, 1080, [chromeOther, cursorFs], SelfKey));
+    }
+
+    [Fact]
+    public void PreferredAppKey_topmost_wins_when_no_fullscreen()
+    {
+        var slackWin = new PlacementWindowCandidate(
+            SlackKey, 50, 50, 950, 750, ZOrder: 0, IsFullscreen: false);
+        var cursorWin = new PlacementWindowCandidate(
+            CursorKey, 200, 200, 900, 700, ZOrder: 1, IsFullscreen: false);
+        Assert.Equal(
+            SlackKey,
+            PlacementGeometry.PreferredAppKey(0, 0, 1920, 1080, [slackWin, cursorWin], SelfKey));
+    }
+
+    [Fact]
+    public void PreferredAppKey_returns_null_when_no_intersection()
+    {
+        var chromeOther = new PlacementWindowCandidate(
+            ChromeKey, 2000, 100, 2800, 700, ZOrder: 0, IsFullscreen: true);
+        Assert.Null(
+            PlacementGeometry.PreferredAppKey(0, 0, 1920, 1080, [chromeOther], SelfKey));
+    }
+
+    [Fact]
+    public void PreferredAppKey_skips_self()
+    {
+        var pawlet = new PlacementWindowCandidate(
+            SelfKey, 0, 0, 1920, 1080, ZOrder: 0, IsFullscreen: true);
+        var slackWin = new PlacementWindowCandidate(
+            SlackKey, 50, 50, 950, 750, ZOrder: 1, IsFullscreen: false);
+        Assert.Equal(
+            SlackKey,
+            PlacementGeometry.PreferredAppKey(0, 0, 1920, 1080, [pawlet, slackWin], SelfKey));
+    }
 }

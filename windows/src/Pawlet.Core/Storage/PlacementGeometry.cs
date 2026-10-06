@@ -1,5 +1,15 @@
 namespace Pawlet.Core.Storage;
 
+/// <summary>Window snapshot for monitor-local front-app picking.</summary>
+public readonly record struct PlacementWindowCandidate(
+    string AppKey,
+    double Left,
+    double Top,
+    double Right,
+    double Bottom,
+    int ZOrder,
+    bool IsFullscreen);
+
 /// <summary>Pure geometry helpers for pet window placement.</summary>
 public static class PlacementGeometry
 {
@@ -95,6 +105,62 @@ public static class PlacementGeometry
         }
 
         return workAreas[nearest];
+    }
+
+    /// <summary>
+    /// Prefer lowest <see cref="PlacementWindowCandidate.ZOrder"/> among fullscreen candidates
+    /// that intersect the monitor; else lowest z-order among intersecting non-fullscreen; else null.
+    /// Skips <paramref name="selfAppKey"/> when provided (case-insensitive).
+    /// </summary>
+    public static string? PreferredAppKey(
+        double monitorLeft,
+        double monitorTop,
+        double monitorRight,
+        double monitorBottom,
+        IReadOnlyList<PlacementWindowCandidate> candidates,
+        string? selfAppKey)
+    {
+        PlacementWindowCandidate? bestFullscreen = null;
+        PlacementWindowCandidate? bestAny = null;
+
+        for (var i = 0; i < candidates.Count; i++)
+        {
+            var candidate = candidates[i];
+            if (string.IsNullOrEmpty(candidate.AppKey))
+            {
+                continue;
+            }
+
+            if (selfAppKey is not null
+                && string.Equals(candidate.AppKey, selfAppKey, StringComparison.OrdinalIgnoreCase))
+            {
+                continue;
+            }
+
+            var area = IntersectionArea(
+                monitorLeft,
+                monitorTop,
+                monitorRight - monitorLeft,
+                monitorBottom - monitorTop,
+                (candidate.Left, candidate.Top, candidate.Right, candidate.Bottom));
+            if (area <= 0)
+            {
+                continue;
+            }
+
+            if (candidate.IsFullscreen
+                && (bestFullscreen is null || candidate.ZOrder < bestFullscreen.Value.ZOrder))
+            {
+                bestFullscreen = candidate;
+            }
+
+            if (bestAny is null || candidate.ZOrder < bestAny.Value.ZOrder)
+            {
+                bestAny = candidate;
+            }
+        }
+
+        return bestFullscreen?.AppKey ?? bestAny?.AppKey;
     }
 
     private static double IntersectionArea(
