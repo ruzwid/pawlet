@@ -44,6 +44,7 @@ final class DesktopPet: NSObject {
     private var lastTick: Double = ProcessInfo.processInfo.systemUptime
     private var hoverGreeting = HoverGreeting()
     var visible: Bool { panel.isVisible }
+    var isDragging: Bool { dragging }
 
     init(atlas: SpriteAtlas, owner: AppDelegate, index: Int) {
         self.atlas = atlas
@@ -113,9 +114,21 @@ final class DesktopPet: NSObject {
         return i.isNull ? 0 : i.width * i.height
     }
 
+    func applyRememberedPlacement(bundleID: String) {
+        guard let owner = owner else { return }
+        if let origin = AppPlacement.rememberedOrigin(defaults: owner.defaults, petID: atlas.id, bundleID: bundleID) {
+            wanderTarget = nil
+            panel.setFrameOrigin(origin)
+        }
+        applyOptions()
+    }
+
     func savePosition() {
-        owner?.defaults.set(panel.frame.minX, forKey: "pet.\(atlas.id).x")
-        owner?.defaults.set(panel.frame.minY, forKey: "pet.\(atlas.id).y")
+        guard let owner = owner else { return }
+        let appBundleID = owner.settings.rememberPlacePerApp ? owner.placementAppBundleID() : nil
+        AppPlacement.writeOrigin(defaults: owner.defaults, petID: atlas.id,
+            origin: NSPoint(x: panel.frame.minX, y: panel.frame.minY),
+            appBundleID: appBundleID, selfBundleID: Bundle.main.bundleIdentifier)
     }
 
     func beginDrag(_ event: NSEvent) {

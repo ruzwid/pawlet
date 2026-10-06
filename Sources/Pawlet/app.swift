@@ -13,7 +13,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject {
     @Published var visibility: [String: Bool] = [:]
     @Published var section = "library"
     @Published var message: String?
-    @Published var settings = AppSettings() { didSet { saveSettings() } }
+    @Published var settings = AppSettings() {
+        didSet {
+            let becameOn = settings.rememberPlacePerApp && !oldValue.rememberPlacePerApp
+            saveSettings()
+            if becameOn { applyRememberedAppPlacement() }
+        }
+    }
     @Published var isCreating = false
     @Published var loginEnabled = false
     var library: PetLibrary!
@@ -85,12 +91,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject {
             defaults.set(entry.id == "mochi-sample", forKey: "pet.\(entry.id).visible")
         }
         for entry in entries where defaults.bool(forKey: "pet.\(entry.id).visible") { setPetVisible(entry.id, show: true) }
+        applyRememberedAppPlacement()
         for url in pendingURLs { handleURL(url) }; pendingURLs.removeAll()
         importPets(pendingImports); pendingImports.removeAll()
         startTimer()
         NotificationCenter.default.addObserver(self, selector: #selector(screensChanged), name: NSApplication.didChangeScreenParametersNotification, object: nil)
         NSWorkspace.shared.notificationCenter.addObserver(self, selector: #selector(willSleep), name: NSWorkspace.willSleepNotification, object: nil)
         NSWorkspace.shared.notificationCenter.addObserver(self, selector: #selector(didWake), name: NSWorkspace.didWakeNotification, object: nil)
+        NSWorkspace.shared.notificationCenter.addObserver(self, selector: #selector(frontmostAppChanged), name: NSWorkspace.didActivateApplicationNotification, object: nil)
         loginEnabled = SMAppService.mainApp.status == .enabled
         if !defaults.bool(forKey: "didLaunch") || CommandLine.arguments.contains("--show-controls") { showControls(); defaults.set(true, forKey: "didLaunch") }
         if let i = CommandLine.arguments.firstIndex(of: "--import"), i + 1 < CommandLine.arguments.count { importPet(URL(fileURLWithPath: CommandLine.arguments[i + 1])) }
@@ -146,6 +154,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject {
         }
         if let pet = pets.first(where: { $0.atlas.id == id }) {
             pet.setVisible(show)
+            if show, settings.rememberPlacePerApp, let bundleID = placementAppBundleID() {
+                pet.applyRememberedPlacement(bundleID: bundleID)
+            }
             if !show { pets.removeAll { $0.atlas.id == id }; pet.savePosition(); pet.panel.close() }
         }
         visibility[id] = show; defaults.set(show, forKey: "pet.\(id).visible")
@@ -247,20 +258,47 @@ final class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject {
         else { defaults.removeObject(forKey: "pet.\(id).hoverReaction") }
         objectWillChange.send()
     }
+    func placementAppBundleID() -> String? {
+        let bundleID = NSWorkspace.shared.frontmostApplication?.bundleIdentifier
+        return AppPlacement.isTrackable(bundleID: bundleID, selfBundleID: Bundle.main.bundleIdentifier) ? bundleID : nil
+    }
+
     func sizeOverride(for id: String) -> Double? {
+        if settings.rememberPlacePerApp, let bundleID = placementAppBundleID() {
+            return AppPlacement.rememberedSize(defaults: defaults, petID: id, bundleID: bundleID)
+        }
         guard let value = defaults.object(forKey: "pet.\(id).size") as? NSNumber,
               value.doubleValue.isFinite else { return nil }
-        return min(MotionConstants.MAX_PET_SCALE, max(MotionConstants.MIN_PET_SCALE, value.doubleValue))
+        return AppPlacement.clampSize(value.doubleValue)
     }
-    func miniSize(for id: String) -> Double { sizeOverride(for: id) ?? settings.size }
+
+    func miniSize(for id: String) -> Double {
+        AppPlacement.resolvedSize(defaults: defaults, petID: id, settingsSize: settings.size,
+            rememberPlacePerApp: settings.rememberPlacePerApp, appBundleID: placementAppBundleID(),
+            selfBundleID: Bundle.main.bundleIdentifier)
+    }
+
     func setSizeOverride(_ size: Double?, for id: String) {
+        let appBundleID = settings.rememberPlacePerApp ? placementAppBundleID() : nil
         if let size = size {
-            guard size.isFinite else { return }
-            defaults.set(min(MotionConstants.MAX_PET_SCALE, max(MotionConstants.MIN_PET_SCALE, size)), forKey: "pet.\(id).size")
-        } else { defaults.removeObject(forKey: "pet.\(id).size") }
+            AppPlacement.writeSize(defaults: defaults, petID: id, size: size, appBundleID: appBundleID,
+                selfBundleID: Bundle.main.bundleIdentifier)
+        } else {
+            AppPlacement.clearSize(defaults: defaults, petID: id, appBundleID: appBundleID,
+                selfBundleID: Bundle.main.bundleIdentifier)
+        }
         pets.filter { $0.atlas.id == id }.forEach { $0.applyOptions() }
         objectWillChange.send()
     }
+
+    func applyRememberedAppPlacement() {
+        guard settings.rememberPlacePerApp else { return }
+        if pets.contains(where: { $0.isDragging }) { return }
+        guard let bundleID = placementAppBundleID() else { return }
+        pets.filter { $0.visible }.forEach { $0.applyRememberedPlacement(bundleID: bundleID) }
+    }
+
+    @objc func frontmostAppChanged(_ notification: Notification) { applyRememberedAppPlacement() }
     func revealLibrary() { NSWorkspace.shared.open(library.root) }
     func revealSelected() {
         guard let selected = selected else { return }
