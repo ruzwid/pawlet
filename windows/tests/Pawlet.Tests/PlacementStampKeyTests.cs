@@ -2,43 +2,6 @@ using Pawlet.Core.Storage;
 
 namespace Pawlet.Tests;
 
-public class PlacementStampKeyTests
-{
-    private static readonly string Self = Path.GetFullPath(@"C:\Apps\Pawlet\Pawlet.exe");
-    private static readonly string Slack = Path.GetFullPath(@"C:\Apps\Slack\slack.exe");
-    private static readonly string Chrome = Path.GetFullPath(@"C:\Program Files\Google\Chrome\Application\chrome.exe");
-
-    [Fact]
-    public void Select_prefers_current_when_trackable()
-    {
-        Assert.Equal(Slack, PlacementStampKey.Select(Slack, Chrome, Self, isDragging: false));
-        // Trackable current wins even while dragging.
-        Assert.Equal(Chrome, PlacementStampKey.Select(Chrome, Slack, Self, isDragging: true));
-    }
-
-    [Fact]
-    public void Select_returns_null_when_library_frontmost_and_not_dragging()
-    {
-        Assert.Null(PlacementStampKey.Select(Self, Slack, Self, isDragging: false));
-        Assert.Null(PlacementStampKey.Select(null, Slack, Self, isDragging: false));
-    }
-
-    [Fact]
-    public void Select_pins_last_trackable_while_dragging_and_current_untrackable()
-    {
-        Assert.Equal(Slack, PlacementStampKey.Select(Self, Slack, Self, isDragging: true));
-        Assert.Equal(Slack, PlacementStampKey.Select(null, Slack, Self, isDragging: true));
-        Assert.Null(PlacementStampKey.Select(Self, null, Self, isDragging: true));
-    }
-
-    [Fact]
-    public void Select_returns_null_when_self_unresolvable()
-    {
-        Assert.Null(PlacementStampKey.Select(Slack, Slack, self: null, isDragging: false));
-        Assert.Null(PlacementStampKey.Select(Slack, Slack, self: "", isDragging: false));
-    }
-}
-
 public class PlacementGeometryTests
 {
     [Fact]

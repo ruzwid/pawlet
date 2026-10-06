@@ -2,6 +2,7 @@ using System.ComponentModel;
 using System.IO;
 using System.Text.Json;
 using System.Windows;
+using Microsoft.Win32;
 using Pawlet.Core.Packs;
 using Pawlet.Core.Storage;
 using Pawlet.Library;
@@ -31,8 +32,10 @@ public partial class App : Application
         _runtime = new PetRuntime();
         _foregroundWatcher = new ForegroundWatcher();
         _foregroundWatcher.Changed += path => _runtime?.OnForegroundAppChanged(path);
+        SystemEvents.DisplaySettingsChanged += OnDisplaySettingsChanged;
         Exit += (_, _) =>
         {
+            SystemEvents.DisplaySettingsChanged -= OnDisplaySettingsChanged;
             _tray?.Dispose();
             _tray = null;
             _library = null;
@@ -104,6 +107,12 @@ public partial class App : Application
         {
             _applyingSettings = false;
         }
+    }
+
+    private void OnDisplaySettingsChanged(object? sender, EventArgs e)
+    {
+        // SystemEvents may raise off the UI thread.
+        Dispatcher.BeginInvoke(() => _runtime?.OnDisplaySettingsChanged());
     }
 
     private void PersistSettings()

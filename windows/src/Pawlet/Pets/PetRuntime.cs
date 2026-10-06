@@ -105,10 +105,11 @@ public sealed class PetRuntime : IDisposable
         };
         window.OnDragEnded = () =>
         {
-            // Stamp while PetWindow still reports IsDragging (drag pin).
+            // Drop stamps the destination monitor's app (Mac parity). Mid-drag pin
+            // stays for focus changes during drag; clear it before stamp so resolve
+            // uses the drop rect. Skip post-drag apply (would teleport to another slot).
+            window.DragPlacementAppKey = null;
             SaveOrigin(petId, window.Left, window.Top, stampAppSlot: true);
-            // Reconcile after mouse-up clears _dragging (BeginInvoke runs next).
-            window.Dispatcher.BeginInvoke(ApplyAppPlacementToOpenWindows);
         };
         window.ResolveEffectiveScale = () => ResolvedScaleForStamp(petId);
         window.OnSetSizeOverride = size => SetSizeOverride(petId, size);
@@ -199,10 +200,34 @@ public sealed class PetRuntime : IDisposable
         ObjectDisposedException.ThrowIf(_disposed, this);
         _ = appKey;
 
-        // Skip apply while dragging; stamp uses drag-start pin. Reconcile on drag end.
+        // Skip apply while dragging; mid-drag pin holds the start-monitor key for Size.
         if (AnyWindowDragging)
         {
             return;
+        }
+
+        ApplyAppPlacementToOpenWindows();
+    }
+
+    /// <summary>
+    /// Display layout changed: clamp open pets into work areas, then re-apply per-app slots.
+    /// </summary>
+    public void OnDisplaySettingsChanged()
+    {
+        ObjectDisposedException.ThrowIf(_disposed, this);
+
+        foreach (var entry in _open.Values)
+        {
+            if (entry.Window.IsDragging)
+            {
+                continue;
+            }
+
+            var window = entry.Window;
+            var clamped = PetWindow.ClampOriginToWorkArea(
+                window.Left, window.Top, window.Width, window.Height);
+            window.Left = clamped.X;
+            window.Top = clamped.Y;
         }
 
         ApplyAppPlacementToOpenWindows();

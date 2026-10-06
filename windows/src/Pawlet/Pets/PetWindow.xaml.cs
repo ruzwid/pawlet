@@ -87,7 +87,7 @@ public partial class PetWindow : Window
     /// <summary>Invoked when a drag begins (pin monitor-local app key).</summary>
     public Action? OnDragStarted { get; set; }
 
-    /// <summary>App key pinned at drag start for stamp (cleared after drag end).</summary>
+    /// <summary>App key pinned at drag start for mid-drag Size/focus (cleared before drop stamp).</summary>
     public string? DragPlacementAppKey { get; set; }
 
     /// <summary>Effective scale for Size menu check marks.</summary>
@@ -487,7 +487,7 @@ public partial class PetWindow : Window
 
         try
         {
-            // Stamp while still dragging so PlacementStampKey keeps the drag pin.
+            // Stamp while still dragging; PetRuntime clears the mid-drag pin before resolve.
             if (_moved)
             {
                 OnDragEnded?.Invoke();
