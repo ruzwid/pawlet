@@ -84,6 +84,12 @@ public partial class PetWindow : Window
     /// <summary>Invoked on drag end when the window actually moved (stamp app origin).</summary>
     public Action? OnDragEnded { get; set; }
 
+    /// <summary>Invoked when a drag begins (pin monitor-local app key).</summary>
+    public Action? OnDragStarted { get; set; }
+
+    /// <summary>App key pinned at drag start for stamp (cleared after drag end).</summary>
+    public string? DragPlacementAppKey { get; set; }
+
     /// <summary>Effective scale for Size menu check marks.</summary>
     public Func<double>? ResolveEffectiveScale { get; set; }
 
@@ -119,6 +125,20 @@ public partial class PetWindow : Window
     }
 
     /// <summary>
+    /// Pixel→DIP scale from primary work area (same-DPI multi-monitor exact; mixed-DPI approximate).
+    /// </summary>
+    internal static (double ScaleX, double ScaleY) DipScaleFromPrimary()
+    {
+        var primaryDip = SystemParameters.WorkArea;
+        var screens = System.Windows.Forms.Screen.AllScreens;
+        var primaryPx = System.Windows.Forms.Screen.PrimaryScreen?.WorkingArea
+            ?? (screens.Length > 0 ? screens[0].WorkingArea : default);
+        var scaleX = primaryPx.Width > 0 ? primaryDip.Width / primaryPx.Width : 1.0;
+        var scaleY = primaryPx.Height > 0 ? primaryDip.Height / primaryPx.Height : 1.0;
+        return (scaleX, scaleY);
+    }
+
+    /// <summary>
     /// All monitor work areas in WPF DIPs (same space as <see cref="Window.Left"/> / <see cref="Window.Top"/>).
     /// Primary uses <see cref="SystemParameters.WorkArea"/>; others scale from WinForms pixels via primary.
     /// </summary>
@@ -131,11 +151,7 @@ public partial class PetWindow : Window
             return [(primaryDip.Left, primaryDip.Top, primaryDip.Right, primaryDip.Bottom)];
         }
 
-        var primaryPx = System.Windows.Forms.Screen.PrimaryScreen?.WorkingArea ?? screens[0].WorkingArea;
-        // Same-DPI multi-monitor is exact; mixed-DPI secondary is approximate (preview ceiling).
-        var scaleX = primaryPx.Width > 0 ? primaryDip.Width / primaryPx.Width : 1.0;
-        var scaleY = primaryPx.Height > 0 ? primaryDip.Height / primaryPx.Height : 1.0;
-
+        var (scaleX, scaleY) = DipScaleFromPrimary();
         var areas = new (double Left, double Top, double Right, double Bottom)[screens.Length];
         for (var i = 0; i < screens.Length; i++)
         {
@@ -147,6 +163,30 @@ public partial class PetWindow : Window
 
             var wa = screens[i].WorkingArea;
             areas[i] = (wa.Left * scaleX, wa.Top * scaleY, wa.Right * scaleX, wa.Bottom * scaleY);
+        }
+
+        return areas;
+    }
+
+    /// <summary>
+    /// All monitor full bounds in WPF DIPs (for fullscreen cover checks / app picker monitor).
+    /// </summary>
+    internal static (double Left, double Top, double Right, double Bottom)[] AllMonitorBounds()
+    {
+        var screens = System.Windows.Forms.Screen.AllScreens;
+        if (screens.Length == 0)
+        {
+            // Fallback: primary work area as a stand-in when Forms reports no screens.
+            var wa = SystemParameters.WorkArea;
+            return [(wa.Left, wa.Top, wa.Right, wa.Bottom)];
+        }
+
+        var (scaleX, scaleY) = DipScaleFromPrimary();
+        var areas = new (double Left, double Top, double Right, double Bottom)[screens.Length];
+        for (var i = 0; i < screens.Length; i++)
+        {
+            var b = screens[i].Bounds;
+            areas[i] = (b.Left * scaleX, b.Top * scaleY, b.Right * scaleX, b.Bottom * scaleY);
         }
 
         return areas;
@@ -408,6 +448,7 @@ public partial class PetWindow : Window
         _moved = false;
         _dragStart = PointToScreen(e.GetPosition(this));
         _dragOffset = e.GetPosition(this);
+        OnDragStarted?.Invoke();
         CaptureMouse();
         e.Handled = true;
     }
@@ -461,6 +502,7 @@ public partial class PetWindow : Window
         finally
         {
             _dragging = false;
+            DragPlacementAppKey = null;
             ReleaseMouseCapture();
         }
 

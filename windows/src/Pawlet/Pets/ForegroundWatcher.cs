@@ -1,8 +1,5 @@
-using System.ComponentModel;
-using System.Diagnostics;
 using System.Runtime.InteropServices;
 using System.Windows;
-using Pawlet.Core.Storage;
 
 namespace Pawlet.Pets;
 
@@ -138,28 +135,7 @@ public sealed class ForegroundWatcher : IDisposable
     private static string? ResolvePath(IntPtr hwnd)
     {
         _ = GetWindowThreadProcessId(hwnd, out var processId);
-        if (processId == 0)
-        {
-            return null;
-        }
-
-        try
-        {
-            using var process = Process.GetProcessById((int)processId);
-            return PlacementStore.NormalizeAppKey(process.MainModule?.FileName);
-        }
-        catch (Win32Exception)
-        {
-            return null;
-        }
-        catch (InvalidOperationException)
-        {
-            return null;
-        }
-        catch (ArgumentException)
-        {
-            return null;
-        }
+        return ProcessMainModule.TryGetPath((int)processId);
     }
 
     private delegate void WinEventProc(

@@ -20,8 +20,6 @@ public sealed class PetRuntime : IDisposable
     private readonly string? _selfExePath = ResolveSelfExePath();
     private PlacementStore _placements = PlacementStore.Load();
     private SettingsModel _settings = new();
-    private string? _foregroundAppKey;
-    private string? _lastTrackableAppKey;
     private bool _disposed;
     private bool _paused;
     private bool? _startWithWindowsApplied;
@@ -100,6 +98,11 @@ public sealed class PetRuntime : IDisposable
         var atlas = AtlasSheet.Load(atlasPath, manifest.SpriteVersion);
         var window = new PetWindow(atlas);
         var petId = manifest.Id;
+        window.OnDragStarted = () =>
+        {
+            // Pin monitor-local key at drag start (not global foreground).
+            window.DragPlacementAppKey = ResolveAppKey(window);
+        };
         window.OnDragEnded = () =>
         {
             // Stamp while PetWindow still reports IsDragging (drag pin).
@@ -122,7 +125,8 @@ public sealed class PetRuntime : IDisposable
 
         var index = _open.Count;
         var global = _placements.RememberedGlobalOrigin(petId);
-        var showScale = ResolvedScale(petId);
+        // Scale before Show uses global/settings; per-app apply below uses monitor-local key.
+        var showScale = ResolvedScale(petId, appKey: null);
         var showWidth = AtlasSheet.CellWidth * showScale;
         var showHeight = AtlasSheet.CellHeight * showScale;
         if (global is { } origin)
@@ -148,11 +152,15 @@ public sealed class PetRuntime : IDisposable
         _open[full] = entry;
         ApplyToWindow(entry);
 
-        if (UsesAppPlacement)
+        if (_settings.RememberPlacePerApp)
         {
-            var appOrigin = _placements.RememberedAppOrigin(petId, _foregroundAppKey);
-            Point? point = appOrigin is { } o ? new Point(o.X, o.Y) : null;
-            window.ApplyRememberedPlacement(point, ResolvedScale(petId), _settings.Opacity);
+            var key = ResolveAppKey(window);
+            if (IsTrackable(key))
+            {
+                var appOrigin = _placements.RememberedAppOrigin(petId, key);
+                Point? point = appOrigin is { } o ? new Point(o.X, o.Y) : null;
+                window.ApplyRememberedPlacement(point, ResolvedScale(petId, key), _settings.Opacity);
+            }
         }
 
         window.Show();
@@ -182,19 +190,16 @@ public sealed class PetRuntime : IDisposable
         }
     }
 
-    /// <summary>Foreground app changed (normalized path or null).</summary>
+    /// <summary>
+    /// Foreground changed: trigger only. Apply uses per-window monitor-local keys
+    /// (does not use the global foreground path as the apply source).
+    /// </summary>
     public void OnForegroundAppChanged(string? appKey)
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
+        _ = appKey;
 
-        _foregroundAppKey = PlacementStore.NormalizeAppKey(appKey);
-        if (_selfExePath is not null
-            && PlacementStore.IsTrackable(_foregroundAppKey, _selfExePath))
-        {
-            _lastTrackableAppKey = _foregroundAppKey;
-        }
-
-        // Skip apply while dragging; stamp pin uses lastTrackable. Reconcile on drag end.
+        // Skip apply while dragging; stamp uses drag-start pin. Reconcile on drag end.
         if (AnyWindowDragging)
         {
             return;
@@ -205,7 +210,7 @@ public sealed class PetRuntime : IDisposable
 
     private void ApplyAppPlacementToOpenWindows()
     {
-        if (!UsesAppPlacement)
+        if (!_settings.RememberPlacePerApp)
         {
             return;
         }
@@ -217,9 +222,15 @@ public sealed class PetRuntime : IDisposable
                 continue;
             }
 
-            var appOrigin = _placements.RememberedAppOrigin(entry.PetId, _foregroundAppKey);
+            var key = ResolveAppKey(entry.Window);
+            if (!IsTrackable(key))
+            {
+                continue;
+            }
+
+            var appOrigin = _placements.RememberedAppOrigin(entry.PetId, key);
             Point? origin = appOrigin is { } o ? new Point(o.X, o.Y) : null;
-            entry.Window.ApplyRememberedPlacement(origin, ResolvedScale(entry.PetId), _settings.Opacity);
+            entry.Window.ApplyRememberedPlacement(origin, ResolvedScale(entry.PetId, key), _settings.Opacity);
         }
     }
 
@@ -229,8 +240,8 @@ public sealed class PetRuntime : IDisposable
         ArgumentException.ThrowIfNullOrEmpty(petId);
 
         _placements.WriteGlobalOrigin(petId, left, top);
-        var stampKey = StampAppKey;
-        if (stampAppSlot && UsesStampPlacement && stampKey is not null)
+        var stampKey = StampAppKeyForPet(petId);
+        if (stampAppSlot && stampKey is not null)
         {
             _placements.WriteAppOrigin(petId, stampKey, left, top);
         }
@@ -243,8 +254,8 @@ public sealed class PetRuntime : IDisposable
         ObjectDisposedException.ThrowIf(_disposed, this);
         ArgumentException.ThrowIfNullOrEmpty(petId);
 
-        var stampKey = StampAppKey;
-        if (UsesStampPlacement && stampKey is not null)
+        var stampKey = StampAppKeyForPet(petId);
+        if (stampKey is not null)
         {
             if (size is { } appSize)
             {
@@ -276,32 +287,29 @@ public sealed class PetRuntime : IDisposable
     }
 
     /// <summary>
-    /// Scale for Settings / apply when the true foreground app drives placement
-    /// (Library Settings uses Settings.Scale when Pawlet is frontmost).
+    /// Scale for apply / settings when <paramref name="appKey"/> is the monitor-local slot
+    /// (null or untrackable → Settings.Scale / pet-level).
     /// </summary>
-    public double ResolvedScale(string petId)
+    public double ResolvedScale(string petId, string? appKey)
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
         ArgumentException.ThrowIfNullOrEmpty(petId);
-        return _placements.ResolvedScale(
-            petId,
-            UsesAppPlacement,
-            _foregroundAppKey,
-            _settings.Scale);
+        var useApp = _settings.RememberPlacePerApp && IsTrackable(appKey);
+        return _placements.ResolvedScale(petId, useApp, appKey, _settings.Scale);
     }
 
     /// <summary>
-    /// Scale for pet context Size: trackable current → app size; drag pin → last
-    /// trackable; Library/self frontmost → pet-level size.
+    /// Scale for pet context Size: drag pin or monitor-local key for that pet's window.
     /// </summary>
     public double ResolvedScaleForStamp(string petId)
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
         ArgumentException.ThrowIfNullOrEmpty(petId);
+        var stampKey = StampAppKeyForPet(petId);
         return _placements.ResolvedScale(
             petId,
-            UsesStampPlacement,
-            StampAppKey,
+            stampKey is not null,
+            stampKey,
             _settings.Scale);
     }
 
@@ -321,25 +329,45 @@ public sealed class PetRuntime : IDisposable
         _disposed = true;
     }
 
-    /// <summary>True when the live foreground app is trackable (not self).</summary>
-    private bool UsesAppPlacement =>
-        _settings.RememberPlacePerApp
-        && _selfExePath is not null
-        && PlacementStore.IsTrackable(_foregroundAppKey, _selfExePath);
-
-    /// <summary>True when pet interaction can stamp/read a per-app slot (trackable or drag-pinned).</summary>
-    private bool UsesStampPlacement =>
-        _settings.RememberPlacePerApp && StampAppKey is not null;
-
-    private string? StampAppKey =>
-        PlacementStampKey.Select(
-            _foregroundAppKey,
-            _lastTrackableAppKey,
-            _selfExePath,
-            AnyWindowDragging);
-
     private bool AnyWindowDragging =>
         _open.Values.Any(entry => entry.Window.IsDragging);
+
+    private bool IsTrackable(string? appKey) =>
+        _selfExePath is not null && PlacementStore.IsTrackable(appKey, _selfExePath);
+
+    private string? ResolveAppKey(PetWindow window) =>
+        MonitorTopApp.PreferredAppKey(
+            window.Left, window.Top, window.Width, window.Height, _selfExePath);
+
+    /// <summary>
+    /// Stamp/read key for a pet: drag-start pin while dragging, else monitor-local resolve.
+    /// </summary>
+    private string? StampAppKeyForPet(string petId)
+    {
+        if (!_settings.RememberPlacePerApp || _selfExePath is null)
+        {
+            return null;
+        }
+
+        foreach (var entry in _open.Values)
+        {
+            if (!string.Equals(entry.PetId, petId, StringComparison.OrdinalIgnoreCase))
+            {
+                continue;
+            }
+
+            var window = entry.Window;
+            if (window.IsDragging && IsTrackable(window.DragPlacementAppKey))
+            {
+                return PlacementStore.NormalizeAppKey(window.DragPlacementAppKey);
+            }
+
+            var key = ResolveAppKey(window);
+            return IsTrackable(key) ? key : null;
+        }
+
+        return null;
+    }
 
     private void PersistGlobalOrigin(Entry entry)
     {
@@ -353,8 +381,8 @@ public sealed class PetRuntime : IDisposable
         window.Paused = _paused;
         if (!window.PlacementTransitionActive)
         {
-            // Settings path: when Library is frontmost, UsesAppPlacement is false → Settings.Scale.
-            window.Scale = ResolvedScale(entry.PetId);
+            var key = _settings.RememberPlacePerApp ? ResolveAppKey(window) : null;
+            window.Scale = ResolvedScale(entry.PetId, IsTrackable(key) ? key : null);
             window.Opacity = _settings.Opacity;
         }
 
