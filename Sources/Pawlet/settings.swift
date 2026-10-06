@@ -12,6 +12,7 @@ struct AppSettings: Codable, Equatable {
     var paused = false
     var alwaysOnTop = true
     var clickThrough = false
+    var rememberPlacePerApp = false
     var allSpaces = true
     var showDockIcon = true
     var size = 1.0
@@ -34,6 +35,7 @@ struct AppSettings: Codable, Equatable {
         paused = try values.decodeIfPresent(Bool.self, forKey: .paused) ?? paused
         alwaysOnTop = try values.decodeIfPresent(Bool.self, forKey: .alwaysOnTop) ?? alwaysOnTop
         clickThrough = try values.decodeIfPresent(Bool.self, forKey: .clickThrough) ?? clickThrough
+        rememberPlacePerApp = try values.decodeIfPresent(Bool.self, forKey: .rememberPlacePerApp) ?? rememberPlacePerApp
         allSpaces = try values.decodeIfPresent(Bool.self, forKey: .allSpaces) ?? allSpaces
         showDockIcon = try values.decodeIfPresent(Bool.self, forKey: .showDockIcon) ?? showDockIcon
         size = try values.decodeIfPresent(Double.self, forKey: .size) ?? size
@@ -49,5 +51,5 @@ struct AppSettings: Codable, Equatable {
 
 enum AppSettingsKey: String, CodingKey {
     case animateIdle, followCursor, wander, loopActivities, animateInteractions, greetOnHover, hoverReaction, animationInterval
-    case paused, alwaysOnTop, clickThrough, allSpaces, showDockIcon, size, speed, opacity, appearance
+    case paused, alwaysOnTop, clickThrough, rememberPlacePerApp, allSpaces, showDockIcon, size, speed, opacity, appearance
 }

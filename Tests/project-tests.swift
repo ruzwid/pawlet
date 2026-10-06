@@ -82,7 +82,7 @@ enum ProjectTests {
         var disabledGreeting = HoverGreeting()
         try require(!disabledGreeting.shouldGreet(isHovering: true, isEnabled: false, isBlocked: false), "Disabled hover must stay still")
         let previousSettings = try JSONDecoder().decode(AppSettings.self, from: Data(#"{"animateIdle":true,"size":1.25,"followCursor":false}"#.utf8))
-        try require(previousSettings.animateIdle && previousSettings.size == 1.25 && previousSettings.animationInterval == 10 && previousSettings.greetOnHover, "Settings upgrade must preserve prior choices and add new defaults")
+        try require(previousSettings.animateIdle && previousSettings.size == 1.25 && previousSettings.animationInterval == 10 && previousSettings.greetOnHover && !previousSettings.rememberPlacePerApp, "Settings upgrade must preserve prior choices and add new defaults")
         let smallSettings = try JSONDecoder().decode(AppSettings.self, from: Data(#"{"size":0.25}"#.utf8))
         try require(smallSettings.size == 0.25, "25 percent size must survive persistence")
         let outOfRangeSettings = try JSONDecoder().decode(AppSettings.self, from: Data(#"{"size":0.1}"#.utf8))
