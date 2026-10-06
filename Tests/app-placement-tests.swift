@@ -9,22 +9,13 @@ enum AppPlacementTests {
         try ProjectTests.require(!AppPlacement.isTrackable(bundleID: "a/b", selfBundleID: selfID), "Slash must not be trackable")
         try ProjectTests.require(AppPlacement.isTrackable(bundleID: "com.google.Chrome", selfBundleID: selfID), "Chrome bundle must be trackable")
 
-        try ProjectTests.require(AppPlacement.originWriteAppBundleID(rememberPlacePerApp: false,
-            dragStartBundleID: "com.tinyspeck.slackmacgap", currentBundleID: "com.google.Chrome") == nil,
-            "Origin write must ignore apps when per-app place is off")
-        try ProjectTests.require(AppPlacement.originWriteAppBundleID(rememberPlacePerApp: true,
-            dragStartBundleID: "com.tinyspeck.slackmacgap", currentBundleID: "com.google.Chrome") == "com.tinyspeck.slackmacgap",
-            "Drag-start app must win over a mid-drag frontmost change")
-        try ProjectTests.require(AppPlacement.originWriteAppBundleID(rememberPlacePerApp: true,
-            dragStartBundleID: nil, currentBundleID: "com.google.Chrome") == "com.google.Chrome",
-            "Without a drag-start pin, origin write uses the current frontmost app")
-
         let suite = "com.ruzwid.pawlet.placement-tests." + UUID().uuidString
         let defaults = UserDefaults(suiteName: suite)!
         defer { defaults.removePersistentDomain(forName: suite) }
         let origin = NSPoint(x: 40, y: 80)
-        AppPlacement.writeOrigin(defaults: defaults, petID: "mochi-sample", origin: origin,
-            appBundleID: "com.google.Chrome", selfBundleID: selfID)
+        AppPlacement.writeGlobalOrigin(defaults: defaults, petID: "mochi-sample", origin: origin)
+        AppPlacement.writeAppOrigin(defaults: defaults, petID: "mochi-sample", origin: origin,
+            bundleID: "com.google.Chrome", selfBundleID: selfID)
         try ProjectTests.require(AppPlacement.rememberedOrigin(defaults: defaults, petID: "mochi-sample", bundleID: "com.google.Chrome") == origin,
             "Trackable write must round-trip the app origin")
         try ProjectTests.require(defaults.object(forKey: "pet.mochi-sample.x") as? Double == 40
@@ -33,12 +24,11 @@ enum AppPlacementTests {
         let other = "com.ruzwid.pawlet.placement-tests-other." + UUID().uuidString
         let onlyGlobal = UserDefaults(suiteName: other)!
         defer { onlyGlobal.removePersistentDomain(forName: other) }
-        AppPlacement.writeOrigin(defaults: onlyGlobal, petID: "mochi-sample", origin: NSPoint(x: 1, y: 2),
-            appBundleID: nil, selfBundleID: selfID)
+        AppPlacement.writeGlobalOrigin(defaults: onlyGlobal, petID: "mochi-sample", origin: NSPoint(x: 1, y: 2))
         try ProjectTests.require(AppPlacement.rememberedOrigin(defaults: onlyGlobal, petID: "mochi-sample", bundleID: "com.google.Chrome") == nil,
-            "Nil app bundle must not create an app slot")
-        AppPlacement.writeOrigin(defaults: onlyGlobal, petID: "mochi-sample", origin: NSPoint(x: 3, y: 4),
-            appBundleID: selfID, selfBundleID: selfID)
+            "Global-only write must not create an app slot")
+        AppPlacement.writeAppOrigin(defaults: onlyGlobal, petID: "mochi-sample", origin: NSPoint(x: 3, y: 4),
+            bundleID: selfID, selfBundleID: selfID)
         try ProjectTests.require(onlyGlobal.object(forKey: "pet.mochi-sample.app.\(selfID).x") == nil,
             "Pawlet bundle must not write an app slot")
 
@@ -50,13 +40,13 @@ enum AppPlacementTests {
             "A lone X coordinate must not restore")
 
         defaults.set(0.4, forKey: "pet.mochi-sample.size")
-        AppPlacement.writeSize(defaults: defaults, petID: "mochi-sample", size: 0.5,
+        AppPlacement.writeSizeInActiveSlot(defaults: defaults, petID: "mochi-sample", size: 0.5,
             appBundleID: "com.google.Chrome", selfBundleID: selfID)
         try ProjectTests.require(AppPlacement.rememberedSize(defaults: defaults, petID: "mochi-sample", bundleID: "com.google.Chrome") == 0.5,
             "Trackable size must round-trip")
         try ProjectTests.require((defaults.object(forKey: "pet.mochi-sample.size") as? Double) == 0.4,
             "App size write must not replace the pet-level size")
-        AppPlacement.writeSize(defaults: defaults, petID: "mochi-sample", size: 9,
+        AppPlacement.writeSizeInActiveSlot(defaults: defaults, petID: "mochi-sample", size: 9,
             appBundleID: "com.google.Chrome", selfBundleID: selfID)
         try ProjectTests.require(AppPlacement.rememberedSize(defaults: defaults, petID: "mochi-sample", bundleID: "com.google.Chrome") == MotionConstants.MAX_PET_SCALE,
             "App size must clamp at 175 percent")
@@ -69,20 +59,13 @@ enum AppPlacementTests {
         try ProjectTests.require(AppPlacement.resolvedSize(defaults: defaults, petID: "mochi-sample", settingsSize: 1.0,
             rememberPlacePerApp: true, appBundleID: "com.tinyspeck.slackmacgap", selfBundleID: selfID) == 0.4,
             "Missing app size must fall back to pet-level size")
-        AppPlacement.clearSize(defaults: defaults, petID: "mochi-sample",
+        AppPlacement.clearSizeInActiveSlot(defaults: defaults, petID: "mochi-sample",
             appBundleID: "com.google.Chrome", selfBundleID: selfID)
         try ProjectTests.require(AppPlacement.rememberedSize(defaults: defaults, petID: "mochi-sample", bundleID: "com.google.Chrome") == nil
             && (defaults.object(forKey: "pet.mochi-sample.size") as? Double) == 0.4,
             "Clearing app size must leave the pet-level size")
-        AppPlacement.clearSize(defaults: defaults, petID: "mochi-sample", appBundleID: nil, selfBundleID: selfID)
+        AppPlacement.clearSizeInActiveSlot(defaults: defaults, petID: "mochi-sample", appBundleID: nil, selfBundleID: selfID)
         try ProjectTests.require(defaults.object(forKey: "pet.mochi-sample.size") == nil,
             "Clearing with no trackable app must remove pet-level size")
-
-        try ProjectTests.require(AppPlacement.warrantsTransition(fromOrigin: NSPoint(x: 10, y: 10), toOrigin: NSPoint(x: 40, y: 10),
-            fromWidth: 192, toWidth: 192), "Origin change must warrant a transition")
-        try ProjectTests.require(AppPlacement.warrantsTransition(fromOrigin: NSPoint(x: 10, y: 10), toOrigin: nil,
-            fromWidth: 192, toWidth: 96), "Size change must warrant a transition")
-        try ProjectTests.require(!AppPlacement.warrantsTransition(fromOrigin: NSPoint(x: 10, y: 10), toOrigin: NSPoint(x: 10.2, y: 10),
-            fromWidth: 192, toWidth: 192.2), "Tiny deltas must not warrant a transition")
     }
 }

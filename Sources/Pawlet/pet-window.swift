@@ -68,7 +68,7 @@ final class DesktopPet: NSObject {
         view.setAccessibilityElement(true)
         view.setAccessibilityRole(.button)
         view.setAccessibilityLabel("\(atlas.name), desktop companion")
-        view.setAccessibilityHelp("Hover to greet. Click to wave. Double-click to jump. Drag to move. Right-click for animations.")
+        view.setAccessibilityHelp("Hover to greet. Click to wave. Double-click to jump. Drag to move. Right-click for animations and size.")
         view.sprite = atlas.frame(SpriteFrame(row: 0, column: 0))
         let d = owner.defaults
         if d.object(forKey: "pet.\(atlas.id).x") != nil {
@@ -81,7 +81,9 @@ final class DesktopPet: NSObject {
         guard let owner = owner else { return }
         panel.level = owner.settings.alwaysOnTop ? .floating : .normal
         panel.ignoresMouseEvents = owner.settings.clickThrough
-        panel.alphaValue = CGFloat(owner.settings.opacity)
+        if placementTransition == nil {
+            panel.alphaValue = CGFloat(owner.settings.opacity)
+        }
         panel.collectionBehavior = owner.settings.allSpaces ? [.canJoinAllSpaces, .fullScreenAuxiliary, .stationary] : [.fullScreenAuxiliary, .stationary]
         let origin = panel.frame.origin
         let scale = CGFloat(owner.miniSize(for: atlas.id))
@@ -98,7 +100,7 @@ final class DesktopPet: NSObject {
         let f = screen.visibleFrame
         panel.setFrameOrigin(NSPoint(x: f.maxX - CGFloat(index + 1) * 200 - 24, y: f.minY + 18))
         clampToScreen()
-        savePosition()
+        savePosition(stampAppSlot: true)
     }
 
     func clampToScreen() {
@@ -120,10 +122,9 @@ final class DesktopPet: NSObject {
         guard let owner = owner else { return }
         let origin = AppPlacement.rememberedOrigin(defaults: owner.defaults, petID: atlas.id, bundleID: bundleID)
         let targetWidth = CGFloat(owner.miniSize(for: atlas.id)) * 192
-        let shouldAnimate = animated
-            && !NSWorkspace.shared.accessibilityDisplayShouldReduceMotion
-            && AppPlacement.warrantsTransition(fromOrigin: panel.frame.origin, toOrigin: origin,
-                fromWidth: panel.frame.width, toWidth: targetWidth)
+        let originMoved = origin.map { hypot($0.x - panel.frame.minX, $0.y - panel.frame.minY) > 0.5 } ?? false
+        let sizeChanged = abs(panel.frame.width - targetWidth) > 0.5
+        let shouldAnimate = animated && !NSWorkspace.shared.accessibilityDisplayShouldReduceMotion && (originMoved || sizeChanged)
         guard shouldAnimate else {
             placementTransition = nil
             applyRememberedPlacementNow(origin: origin)
@@ -158,15 +159,16 @@ final class DesktopPet: NSObject {
         applyOptions()
     }
 
-    func savePosition() {
+    /// Global origin always. Per-app origin only when `stampAppSlot` (user drag or reset), never wander/sleep/hide.
+    func savePosition(stampAppSlot: Bool = false) {
         guard let owner = owner else { return }
-        let appBundleID = AppPlacement.originWriteAppBundleID(
-            rememberPlacePerApp: owner.settings.rememberPlacePerApp,
-            dragStartBundleID: dragPlacementAppBundleID,
-            currentBundleID: owner.placementAppBundleID())
-        AppPlacement.writeOrigin(defaults: owner.defaults, petID: atlas.id,
-            origin: NSPoint(x: panel.frame.minX, y: panel.frame.minY),
-            appBundleID: appBundleID, selfBundleID: Bundle.main.bundleIdentifier)
+        let origin = NSPoint(x: panel.frame.minX, y: panel.frame.minY)
+        AppPlacement.writeGlobalOrigin(defaults: owner.defaults, petID: atlas.id, origin: origin)
+        guard stampAppSlot, owner.settings.rememberPlacePerApp else { return }
+        let appBundleID = dragPlacementAppBundleID ?? owner.placementAppBundleID()
+        guard let appBundleID else { return }
+        AppPlacement.writeAppOrigin(defaults: owner.defaults, petID: atlas.id, origin: origin,
+            bundleID: appBundleID, selfBundleID: Bundle.main.bundleIdentifier)
     }
 
     func beginDrag(_ event: NSEvent) {
@@ -192,9 +194,8 @@ final class DesktopPet: NSObject {
         dragging = false; dragState = nil
         if dragged {
             clampToScreen()
-            savePosition()
+            savePosition(stampAppSlot: true)
             engine.perform(.idle, now: ProcessInfo.processInfo.systemUptime, seconds: 0.25)
-            owner?.applyRememberedAppPlacement()
         } else if owner?.settings.animateInteractions == true {
             perform(event.clickCount >= 2 ? .jumping : .waving)
         }
@@ -279,7 +280,7 @@ final class DesktopPet: NSObject {
             sizeMenu.addItem(item)
         }
         sizeMenu.addItem(.separator())
-        let reset = NSMenuItem(title: "Use default size", action: #selector(resetSizeAction), keyEquivalent: "")
+        let reset = NSMenuItem(title: "Clear saved size", action: #selector(resetSizeAction), keyEquivalent: "")
         reset.target = self
         sizeMenu.addItem(reset)
         let sizeItem = NSMenuItem(title: "Size", action: nil, keyEquivalent: "")

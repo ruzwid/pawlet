@@ -7,18 +7,17 @@ enum AppPlacement {
         return true
     }
 
-    /// Slot for an origin write: drag-start app wins over current frontmost when per-app place is on.
-    static func originWriteAppBundleID(rememberPlacePerApp: Bool, dragStartBundleID: String?, currentBundleID: String?) -> String? {
-        guard rememberPlacePerApp else { return nil }
-        return dragStartBundleID ?? currentBundleID
-    }
-
-    static func writeOrigin(defaults: UserDefaults, petID: String, origin: NSPoint, appBundleID: String?, selfBundleID: String?) {
+    /// Always updates `pet.<id>.x` / `.y`. Does not touch per-app keys.
+    static func writeGlobalOrigin(defaults: UserDefaults, petID: String, origin: NSPoint) {
         defaults.set(Double(origin.x), forKey: "pet.\(petID).x")
         defaults.set(Double(origin.y), forKey: "pet.\(petID).y")
-        guard let appBundleID, isTrackable(bundleID: appBundleID, selfBundleID: selfBundleID) else { return }
-        defaults.set(Double(origin.x), forKey: "pet.\(petID).app.\(appBundleID).x")
-        defaults.set(Double(origin.y), forKey: "pet.\(petID).app.\(appBundleID).y")
+    }
+
+    /// Updates only `pet.<id>.app.<bundle>.x` / `.y` when the bundle is trackable.
+    static func writeAppOrigin(defaults: UserDefaults, petID: String, origin: NSPoint, bundleID: String, selfBundleID: String?) {
+        guard isTrackable(bundleID: bundleID, selfBundleID: selfBundleID) else { return }
+        defaults.set(Double(origin.x), forKey: "pet.\(petID).app.\(bundleID).x")
+        defaults.set(Double(origin.y), forKey: "pet.\(petID).app.\(bundleID).y")
     }
 
     static func rememberedOrigin(defaults: UserDefaults, petID: String, bundleID: String) -> NSPoint? {
@@ -32,7 +31,8 @@ enum AppPlacement {
         min(MotionConstants.MAX_PET_SCALE, max(MotionConstants.MIN_PET_SCALE, size))
     }
 
-    static func writeSize(defaults: UserDefaults, petID: String, size: Double, appBundleID: String?, selfBundleID: String?) {
+    /// Writes exactly one size slot: the app key when trackable, otherwise `pet.<id>.size`.
+    static func writeSizeInActiveSlot(defaults: UserDefaults, petID: String, size: Double, appBundleID: String?, selfBundleID: String?) {
         guard size.isFinite else { return }
         let value = clampSize(size)
         if let appBundleID, isTrackable(bundleID: appBundleID, selfBundleID: selfBundleID) {
@@ -48,20 +48,13 @@ enum AppPlacement {
         return clampSize(number.doubleValue)
     }
 
-    static func clearSize(defaults: UserDefaults, petID: String, appBundleID: String?, selfBundleID: String?) {
+    /// Clears exactly one size slot: the app key when trackable, otherwise `pet.<id>.size`.
+    static func clearSizeInActiveSlot(defaults: UserDefaults, petID: String, appBundleID: String?, selfBundleID: String?) {
         if let appBundleID, isTrackable(bundleID: appBundleID, selfBundleID: selfBundleID) {
             defaults.removeObject(forKey: "pet.\(petID).app.\(appBundleID).size")
         } else {
             defaults.removeObject(forKey: "pet.\(petID).size")
         }
-    }
-
-    static func hasSizeOverride(defaults: UserDefaults, petID: String, rememberPlacePerApp: Bool, appBundleID: String?, selfBundleID: String?) -> Bool {
-        if rememberPlacePerApp, let appBundleID, isTrackable(bundleID: appBundleID, selfBundleID: selfBundleID) {
-            return rememberedSize(defaults: defaults, petID: petID, bundleID: appBundleID) != nil
-        }
-        guard let number = defaults.object(forKey: "pet.\(petID).size") as? NSNumber, number.doubleValue.isFinite else { return false }
-        return true
     }
 
     static func resolvedSize(defaults: UserDefaults, petID: String, settingsSize: Double, rememberPlacePerApp: Bool, appBundleID: String?, selfBundleID: String?) -> Double {
@@ -73,11 +66,5 @@ enum AppPlacement {
             return clampSize(number.doubleValue)
         }
         return clampSize(settingsSize)
-    }
-
-    /// True when restoring a remembered place should cross-fade (origin and/or width changed).
-    static func warrantsTransition(fromOrigin: NSPoint, toOrigin: NSPoint?, fromWidth: CGFloat, toWidth: CGFloat) -> Bool {
-        if let toOrigin, hypot(toOrigin.x - fromOrigin.x, toOrigin.y - fromOrigin.y) > 0.5 { return true }
-        return abs(fromWidth - toWidth) > 0.5
     }
 }

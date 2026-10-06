@@ -47,7 +47,7 @@ struct PetInspectorView: View {
                     .font(.system(size: 12)).monospacedDigit().frame(width: 42, alignment: .trailing)
                 Button { app.setSizeOverride(nil, for: pet.id) } label: {
                     Image(systemName: "arrow.counterclockwise").frame(width: 28, height: 28)
-                }.buttonStyle(PawletPlainStyle()).disabled(!AppPlacement.hasSizeOverride(defaults: app.defaults, petID: pet.id, rememberPlacePerApp: app.settings.rememberPlacePerApp, appBundleID: app.placementAppBundleID(), selfBundleID: Bundle.main.bundleIdentifier))
+                }.buttonStyle(PawletPlainStyle()).disabled(app.sizeOverride(for: pet.id) == nil)
                     .accessibilityLabel("Use default size for \(pet.manifest.name)")
                     .help("Use the default size from Settings (\(Int((app.settings.size * 100).rounded()))%)")
             }

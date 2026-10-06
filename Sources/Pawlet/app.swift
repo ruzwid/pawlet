@@ -281,10 +281,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject {
     func setSizeOverride(_ size: Double?, for id: String) {
         let appBundleID = settings.rememberPlacePerApp ? placementAppBundleID() : nil
         if let size = size {
-            AppPlacement.writeSize(defaults: defaults, petID: id, size: size, appBundleID: appBundleID,
+            AppPlacement.writeSizeInActiveSlot(defaults: defaults, petID: id, size: size, appBundleID: appBundleID,
                 selfBundleID: Bundle.main.bundleIdentifier)
         } else {
-            AppPlacement.clearSize(defaults: defaults, petID: id, appBundleID: appBundleID,
+            AppPlacement.clearSizeInActiveSlot(defaults: defaults, petID: id, appBundleID: appBundleID,
                 selfBundleID: Bundle.main.bundleIdentifier)
         }
         pets.filter { $0.atlas.id == id }.forEach { $0.applyOptions() }
