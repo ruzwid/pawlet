@@ -221,6 +221,25 @@ final class DesktopPet: NSObject {
             menu.addItem(item)
         }
         menu.addItem(.separator())
+        let sizeMenu = NSMenu(title: "Size")
+        let percent = Int(((owner?.miniSize(for: atlas.id) ?? 1) * 100).rounded())
+        let steps: [Double] = [0.25, 0.5, 0.75, 1, 1.25, 1.5, 1.75]
+        for step in steps {
+            let title = "\(Int((step * 100).rounded()))%"
+            let item = NSMenuItem(title: title, action: #selector(sizeAction(_:)), keyEquivalent: "")
+            item.target = self
+            item.representedObject = step
+            item.state = percent == Int((step * 100).rounded()) ? .on : .off
+            sizeMenu.addItem(item)
+        }
+        sizeMenu.addItem(.separator())
+        let reset = NSMenuItem(title: "Use default size", action: #selector(resetSizeAction), keyEquivalent: "")
+        reset.target = self
+        sizeMenu.addItem(reset)
+        let sizeItem = NSMenuItem(title: "Size", action: nil, keyEquivalent: "")
+        sizeItem.submenu = sizeMenu
+        menu.addItem(sizeItem)
+        menu.addItem(.separator())
         let settings = NSMenuItem(title: "Mini controls…", action: #selector(AppDelegate.showControls), keyEquivalent: "")
         settings.target = owner; menu.addItem(settings)
         let hide = NSMenuItem(title: "Hide \(atlas.name)", action: #selector(hidePet), keyEquivalent: "")
@@ -232,5 +251,10 @@ final class DesktopPet: NSObject {
         guard let raw = sender.representedObject as? String, let state = PetState(rawValue: raw) else { return }
         perform(state)
     }
+    @objc private func sizeAction(_ sender: NSMenuItem) {
+        guard let size = sender.representedObject as? Double else { return }
+        owner?.setSizeOverride(size, for: atlas.id)
+    }
+    @objc private func resetSizeAction() { owner?.setSizeOverride(nil, for: atlas.id) }
     @objc private func hidePet() { owner?.setPetVisible(atlas.id, show: false) }
 }
