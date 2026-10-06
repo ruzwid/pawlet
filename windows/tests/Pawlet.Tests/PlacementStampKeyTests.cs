@@ -60,4 +60,15 @@ public class PlacementGeometryTests
         Assert.Equal(40, x);
         Assert.Equal(60, y);
     }
+
+    [Fact]
+    public void FrameFitsSafeArea_allows_sub_point_edge_slop()
+    {
+        Assert.True(PlacementGeometry.FrameFitsSafeArea(
+            x: 0, y: -0.25, width: 100, height: 80,
+            workLeft: 0, workTop: 0, workRight: 800, workBottom: 600));
+        Assert.False(PlacementGeometry.FrameFitsSafeArea(
+            x: 0, y: -8, width: 100, height: 80,
+            workLeft: 0, workTop: 0, workRight: 800, workBottom: 600));
+    }
 }

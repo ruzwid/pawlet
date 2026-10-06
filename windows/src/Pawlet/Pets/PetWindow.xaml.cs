@@ -133,9 +133,21 @@ public partial class PetWindow : Window
         double? targetTop = null;
         if (origin is { } point)
         {
-            var clamped = ClampOriginToWorkArea(point.X, point.Y, width, height);
-            targetLeft = clamped.X;
-            targetTop = clamped.Y;
+            // Keep a flush-edge stamp put when it still fits (same Cmd-Tab drift as Mac).
+            var work = SystemParameters.WorkArea;
+            if (PlacementGeometry.FrameFitsSafeArea(
+                    point.X, point.Y, width, height,
+                    work.Left, work.Top, work.Right, work.Bottom))
+            {
+                targetLeft = point.X;
+                targetTop = point.Y;
+            }
+            else
+            {
+                var clamped = ClampOriginToWorkArea(point.X, point.Y, width, height);
+                targetLeft = clamped.X;
+                targetTop = clamped.Y;
+            }
         }
 
         var originChanges = targetLeft is { } left

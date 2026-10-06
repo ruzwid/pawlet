@@ -23,4 +23,24 @@ public static class PlacementGeometry
             Math.Min(maxX, Math.Max(workLeft, x)),
             Math.Min(maxY, Math.Max(workTop, y)));
     }
+
+    /// <summary>
+    /// True when the window fits in the work area, allowing <paramref name="slop"/> of edge noise.
+    /// </summary>
+    public static bool FrameFitsSafeArea(
+        double x,
+        double y,
+        double width,
+        double height,
+        double workLeft,
+        double workTop,
+        double workRight,
+        double workBottom,
+        double slop = 0.5)
+    {
+        return x >= workLeft - slop
+            && y >= workTop - slop
+            && x + width <= workRight + slop
+            && y + height <= workBottom + slop;
+    }
 }
