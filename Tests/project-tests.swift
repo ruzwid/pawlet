@@ -15,7 +15,15 @@ enum ProjectTests {
         defer { try? FileManager.default.removeItem(at: scratch) }
         let library = try PetLibrary(root: scratch.appendingPathComponent("library"))
         try library.seed(from: resources.appendingPathComponent("Pets"))
-        let original = library.list()[0]
+        let seeded = library.list()
+        try require(Set(seeded.map { $0.id }) == Set(["mochi-sample", "paris"]), "Default library must include Mochi and Paris")
+        try library.seed(from: resources.appendingPathComponent("Pets"))
+        try require(library.list().count == seeded.count, "Seeding must not duplicate existing minis")
+        let excluded = try PetLibrary(root: scratch.appendingPathComponent("excluded-library"))
+        try excluded.seed(from: resources.appendingPathComponent("Pets"), excluding: ["paris"])
+        try require(!excluded.list().contains { $0.id == "paris" }, "Removed defaults must stay removed")
+        for entry in seeded { _ = try SpriteAtlas(manifest: entry.manifest, directory: entry.directory) }
+        let original = seeded.first { $0.id == "mochi-sample" }!
         let atlas = try SpriteAtlas(manifest: original.manifest, directory: original.directory)
         try require(atlas.populatedCount == 73 && atlas.hasLookDirections, "v2 artwork count")
         try require(atlas.hash == original.manifest.artworkSHA256, "Original artwork hash")
@@ -94,7 +102,7 @@ enum ProjectTests {
         var newManifest = exportedManifest; newManifest.id = "third-pet-test"; newManifest.name = "Something completely new"
         try PetLibrary.write(newManifest, to: exported)
         let added = try library.install(exported)
-        try require(library.list().count == 2 && added.id == "third-pet-test", "Dynamic pet import")
+        try require(library.list().count == seeded.count + 1 && added.id == "third-pet-test", "Dynamic pet import")
         try library.rename(added, to: "A new name")
         try require(library.list().contains { $0.manifest.name == "A new name" }, "Rename persistence")
         var badManifest = newManifest; badManifest.atlas = "../outside.png"
@@ -123,6 +131,7 @@ enum ProjectTests {
             resources: resources, workspaces: scratch.appendingPathComponent("workspaces"))
         try require(automaticStyle.prompt.contains("Choose a cohesive, cute visual style") && !automaticStyle.prompt.contains("Use the requested visual style"), "Choose for me must delegate a consistent style choice")
         try require(handoff.prompt.contains("Use the requested visual style: plush"), "Explicit style must be preserved")
+        try MiniCustomizationTests.run(sample: original, scratch: scratch)
         try TransferTests.run(sample: original, scratch: scratch)
         try AtlasCompatibilityTests.run(sample: original, scratch: scratch)
         try InteractionPreviewTests.run(sample: original)
@@ -131,7 +140,7 @@ enum ProjectTests {
             "pause and reduced motion", "pet-pack roundtrip preserves bytes", "arbitrary third pet", "rename persistence",
             "duplicate import rejected", "path traversal rejected", "truncated archive rejected", "schema validation",
             "dynamic command targets", "Codex prompt encoding", "creation skill bundled", "idle and activity rest intervals",
-            "zero interval and playback speed", "immediate hover re-entry", "blocked and disabled hover", "settings upgrade", "25 percent size persistence", "automatic and explicit artwork styles", "Codex folder and ZIP imports", "Codex export roundtrip", "unsafe Codex transfers rejected", "Finder ZIP metadata ignored", "unused frames ignored without changing bytes", "missing required frames rejected", "all hover reactions restore idle", "hover reaction persistence", "preview looping and speed", "v1 and v2 preview choices", "frame stepping and reduced motion", "distinct artwork selection switches", "shared preview crop preserves pose registration"]]
+            "zero interval and playback speed", "immediate hover re-entry", "blocked and disabled hover", "settings upgrade", "25 percent size persistence", "automatic and explicit artwork styles", "Codex folder and ZIP imports", "Codex export roundtrip", "unsafe Codex transfers rejected", "Finder ZIP metadata ignored", "unused frames ignored without changing bytes", "missing required frames rejected", "all hover reactions restore idle", "hover reaction persistence", "preview looping and speed", "v1 and v2 preview choices", "frame stepping and reduced motion", "distinct artwork selection switches", "shared preview crop preserves pose registration", "Paris and Mochi defaults", "removed defaults stay removed", "batch import continues after failures", "per-mini size persistence and fallback"]]
         print(String(data: try JSONSerialization.data(withJSONObject: report, options: [.prettyPrinted, .sortedKeys]), encoding: .utf8)!)
     }
 }

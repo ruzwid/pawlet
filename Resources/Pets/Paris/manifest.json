@@ -1,0 +1,9 @@
+{
+  "artworkSHA256" : "e63651d141c2050fe44728585c3f97cce693123a3a5cd98ed072bc026f5d35cb",
+  "atlas" : "spritesheet.png",
+  "description" : "A fluffy cream Pomeranian wearing a blue and pink antler hat.",
+  "id" : "paris",
+  "name" : "Paris",
+  "schemaVersion" : 1,
+  "spriteVersion" : 2
+}

@@ -106,6 +106,16 @@ final class PetLibrary {
         return LibraryPet(manifest: manifest, directory: destination)
     }
 
+    func importFiles(_ urls: [URL]) -> (imported: [LibraryPet], failures: [String]) {
+        var imported: [LibraryPet] = []
+        var failures: [String] = []
+        for url in urls {
+            do { imported.append(try importFile(url)) }
+            catch { failures.append("\(url.lastPathComponent): \(error.localizedDescription)") }
+        }
+        return (imported, failures)
+    }
+
     func importFile(_ url: URL) throws -> LibraryPet {
         let values = try url.resourceValues(forKeys: [.isDirectoryKey, .isSymbolicLinkKey])
         guard values.isSymbolicLink != true else { throw PetLibraryError.invalid("Choose a mini file or folder, rather than a symbolic link.") }

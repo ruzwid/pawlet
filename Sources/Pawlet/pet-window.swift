@@ -81,7 +81,7 @@ final class DesktopPet: NSObject {
         panel.alphaValue = CGFloat(owner.settings.opacity)
         panel.collectionBehavior = owner.settings.allSpaces ? [.canJoinAllSpaces, .fullScreenAuxiliary, .stationary] : [.fullScreenAuxiliary, .stationary]
         let origin = panel.frame.origin
-        let scale = CGFloat(owner.settings.size)
+        let scale = CGFloat(owner.miniSize(for: atlas.id))
         panel.setFrame(NSRect(x: origin.x, y: origin.y, width: 192 * scale, height: 208 * scale), display: true)
         clampToScreen()
     }
@@ -153,8 +153,8 @@ final class DesktopPet: NSObject {
         let delta = min(0.1, max(0, now - lastTick)); lastTick = now
         let reduced = NSWorkspace.shared.accessibilityDisplayShouldReduceMotion
         let mouse = mouseLocation ?? NSEvent.mouseLocation
-        let pointerX = Int((mouse.x - panel.frame.minX) / CGFloat(owner.settings.size))
-        let pointerTopY = 207 - Int((mouse.y - panel.frame.minY) / CGFloat(owner.settings.size))
+        let pointerX = Int((mouse.x - panel.frame.minX) / CGFloat(owner.miniSize(for: atlas.id)))
+        let pointerTopY = 207 - Int((mouse.y - panel.frame.minY) / CGFloat(owner.miniSize(for: atlas.id)))
         let isHovering = panel.frame.contains(mouse) && atlas.isOpaque(SpriteFrame(row: 0, column: 0), x: pointerX, topY: pointerTopY)
         let shouldGreet = hoverGreeting.shouldGreet(isHovering: isHovering,
             isEnabled: owner.settings.greetOnHover,
@@ -188,8 +188,8 @@ final class DesktopPet: NSObject {
         if owner.settings.clickThrough { panel.ignoresMouseEvents = true }
         else if dragging { panel.ignoresMouseEvents = false }
         else if panel.frame.contains(mouse) {
-            let x = Int((mouse.x - panel.frame.minX) / CGFloat(owner.settings.size))
-            let topY = 207 - Int((mouse.y - panel.frame.minY) / CGFloat(owner.settings.size))
+            let x = Int((mouse.x - panel.frame.minX) / CGFloat(owner.miniSize(for: atlas.id)))
+            let topY = 207 - Int((mouse.y - panel.frame.minY) / CGFloat(owner.miniSize(for: atlas.id)))
             panel.ignoresMouseEvents = !atlas.isOpaque(frame, x: x, topY: topY)
         } else { panel.ignoresMouseEvents = false }
         let status = frame.row < 9 ? PetState.allCases[frame.row].title : "Looking around"

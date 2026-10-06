@@ -35,9 +35,10 @@ struct SettingsView: View {
                     hint("Idle movement is off by default. Your Mac's Reduce Motion setting always takes priority.")
                 }
                 settingsSection("On your desktop") {
-                    SettingsSliderRow(title: "Mini size", value: $app.settings.size,
+                    SettingsSliderRow(title: "Default mini size", value: $app.settings.size,
                         range: MotionConstants.MIN_PET_SCALE...MotionConstants.MAX_PET_SCALE,
                         displayValue: "\(Int((app.settings.size * 100).rounded()))%")
+                    hint("Change an individual mini’s size in its preview card. Minis without an override use this default.")
                     SettingsSliderRow(title: "Opacity", value: $app.settings.opacity,
                         range: 0.3...1, displayValue: "\(Int(app.settings.opacity * 100))%")
                     Divider()

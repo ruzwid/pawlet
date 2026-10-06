@@ -1,10 +1,12 @@
-Pawlet 0.6.7 — macOS 13 or later
+Pawlet 0.6.8 — macOS 13 or later
 
 Drag Pawlet.app to Applications, then open it from Applications.
 The paw in the menu bar opens your library and settings.
 Closing the library keeps the minis running; choose Quit from the paw menu to exit.
 
-Idle motion is off by default. Import a .petpack, Codex mini ZIP/folder, or complete sprite sheet to add a character.
+Mochi and Paris are included. Idle motion is off by default.
+Import one or more .petpack files, Codex mini ZIPs/folders, or complete sprite sheets.
+Use Command-click or Shift-click to select multiple minis; valid imports are kept if another fails.
 Hover to greet, click to wave, double-click to jump, drag to move, or right-click for actions.
 Enabled idle/activity loops rest ten seconds between plays by default.
 Hover re-entry restarts the chosen reaction immediately, independently of that interval.
@@ -22,5 +24,6 @@ This is an independent app, not an official OpenAI product.
 Minis folder in the library toolbar opens all installed minis.
 Choose an animation in a mini’s preview to loop it; pause or step through its frames.
 On hover sets this mini’s greeting. Settings has the default for other minis.
+Size changes only this mini; the reset button uses the default size from Settings.
 
 Each companion card has Show mini / Hide mini for one-click desktop visibility.

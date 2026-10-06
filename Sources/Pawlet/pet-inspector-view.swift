@@ -37,6 +37,21 @@ struct PetInspectorView: View {
                     .help("Choose this mini's greeting, or follow the default in Settings. Each entry plays once without a cooldown.")
             }.padding(.vertical, 2)
             if !app.settings.greetOnHover { Text("Hover reactions are off in Settings.").font(.caption).foregroundStyle(PawletTheme.secondary) }
+            HStack(spacing: 12) {
+                Text("Size").font(.system(size: 12, weight: .medium))
+                Slider(value: Binding(get: { app.miniSize(for: pet.id) }, set: { app.setSizeOverride($0, for: pet.id) }),
+                    in: MotionConstants.MIN_PET_SCALE...MotionConstants.MAX_PET_SCALE, step: 0.01) {
+                    Text("Size for \(pet.manifest.name)")
+                }.labelsHidden().accessibilityLabel("Size for \(pet.manifest.name)")
+                    .help("Resize this mini on your desktop. Other minis keep their size.")
+                Text("\(Int((app.miniSize(for: pet.id) * 100).rounded()))%")
+                    .font(.system(size: 12)).monospacedDigit().frame(width: 42, alignment: .trailing)
+                Button { app.setSizeOverride(nil, for: pet.id) } label: {
+                    Image(systemName: "arrow.counterclockwise").frame(width: 28, height: 28)
+                }.buttonStyle(PawletPlainStyle()).disabled(app.sizeOverride(for: pet.id) == nil)
+                    .accessibilityLabel("Use default size for \(pet.manifest.name)")
+                    .help("Use the default size from Settings (\(Int((app.settings.size * 100).rounded()))%)")
+            }
             ScrollView {
                 VStack(alignment: .leading, spacing: 12) {
                     AnimationPreviewView(model: preview)

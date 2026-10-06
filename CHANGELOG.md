@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.6.8
+
+- Import multiple mini packs, ZIPs, folders or sprite sheets in one selection; keep successful imports when another fails.
+- Include Paris alongside Mochi in the default library without replacing existing artwork or restoring removed minis.
+- Adjust each mini’s desktop size from its preview card, with persistent overrides and a reset to the global default.
+
 ## 0.6.7
 
 - Match the macOS app icon to the sidebar badge: the same paw artwork and proportions in olive on a dark rounded tile.

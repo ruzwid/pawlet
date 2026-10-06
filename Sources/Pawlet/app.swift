@@ -4,8 +4,7 @@ import ServiceManagement
 import UniformTypeIdentifiers
 
 final class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject {
-    let defaults: UserDefaults = CommandLine.arguments.contains("--ui-smoke-test")
-        ? UserDefaults(suiteName: "com.ruzwid.pawlet.tests")! : .standard
+    let defaults: UserDefaults
     @Published var entries: [LibraryPet] = []
     @Published var selectedID: String? {
         didSet { if selectedID != oldValue { refreshPreview() } }
@@ -34,6 +33,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject {
     private var pendingURLs: [URL] = []
     private var pendingImports: [URL] = []
     var selected: LibraryPet? { entries.first { $0.id == selectedID } }
+
+    init(defaults: UserDefaults? = nil) {
+        self.defaults = defaults ?? (CommandLine.arguments.contains("--ui-smoke-test")
+            ? UserDefaults(suiteName: "com.ruzwid.pawlet.tests")! : .standard)
+        super.init()
+    }
 
     func applicationWillFinishLaunching(_ notification: Notification) {
         NSAppleEventManager.shared().setEventHandler(self, andSelector: #selector(receiveURL(_:reply:)),
@@ -81,7 +86,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject {
         }
         for entry in entries where defaults.bool(forKey: "pet.\(entry.id).visible") { setPetVisible(entry.id, show: true) }
         for url in pendingURLs { handleURL(url) }; pendingURLs.removeAll()
-        for url in pendingImports { importPet(url) }; pendingImports.removeAll()
+        importPets(pendingImports); pendingImports.removeAll()
         startTimer()
         NotificationCenter.default.addObserver(self, selector: #selector(screensChanged), name: NSApplication.didChangeScreenParametersNotification, object: nil)
         NSWorkspace.shared.notificationCenter.addObserver(self, selector: #selector(willSleep), name: NSWorkspace.willSleepNotification, object: nil)
@@ -98,7 +103,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject {
     func applicationWillTerminate(_ notification: Notification) { pets.forEach { $0.savePosition() }; timer?.invalidate() }
     func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool { showControls(); return true }
     func application(_ sender: NSApplication, openFiles filenames: [String]) {
-        filenames.forEach { importPet(URL(fileURLWithPath: $0)) }
+        importPets(filenames.map { URL(fileURLWithPath: $0) })
         sender.reply(toOpenOrPrint: .success)
     }
     func startTimer() {
@@ -169,16 +174,26 @@ final class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject {
     }
 
     func importPicker() {
-        let panel = NSOpenPanel(); panel.title = "Add a mini"; panel.message = "Choose a mini pack, Codex mini ZIP/folder, pet.json, or complete PNG sprite sheet."
+        let panel = NSOpenPanel(); panel.title = "Add minis"
+        panel.message = "Select one or more mini packs, Codex ZIPs/folders, metadata files, or complete PNG sprite sheets."
         panel.allowedContentTypes = [UTType(filenameExtension: "petpack") ?? .data, .png, .zip, .json]
         panel.canChooseDirectories = true
-        panel.allowsMultipleSelection = false
-        if panel.runModal() == .OK, let url = panel.url { importPet(url) }
+        panel.allowsMultipleSelection = true
+        if panel.runModal() == .OK { importPets(panel.urls) }
     }
-    func importPet(_ url: URL) {
-        guard ready else { pendingImports.append(url); return }
-        do { let pet = try library.importFile(url); reloadLibrary(); selectedID = pet.id; section = "library"; setPetVisible(pet.id, show: true) }
-        catch { message = error.localizedDescription }
+    func importPet(_ url: URL) { importPets([url]) }
+    func importPets(_ urls: [URL]) {
+        guard ready else { pendingImports.append(contentsOf: urls); return }
+        guard !urls.isEmpty else { return }
+        let result = library.importFiles(urls)
+        if let last = result.imported.last {
+            reloadLibrary(); selectedID = last.id; section = "library"
+            for pet in result.imported { setPetVisible(pet.id, show: true) }
+        }
+        if !result.failures.isEmpty {
+            let summary = result.imported.isEmpty ? "" : "Added \(result.imported.count) \(result.imported.count == 1 ? "mini" : "minis").\n\n"
+            message = summary + result.failures.joined(separator: "\n\n")
+        }
     }
     func exportSelected(asZIP: Bool = false) {
         guard let selected = selected else { return }
@@ -230,6 +245,20 @@ final class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject {
     func setHoverOverride(_ reaction: HoverReaction?, for id: String) {
         if let reaction = reaction { defaults.set(reaction.rawValue, forKey: "pet.\(id).hoverReaction") }
         else { defaults.removeObject(forKey: "pet.\(id).hoverReaction") }
+        objectWillChange.send()
+    }
+    func sizeOverride(for id: String) -> Double? {
+        guard let value = defaults.object(forKey: "pet.\(id).size") as? NSNumber,
+              value.doubleValue.isFinite else { return nil }
+        return min(MotionConstants.MAX_PET_SCALE, max(MotionConstants.MIN_PET_SCALE, value.doubleValue))
+    }
+    func miniSize(for id: String) -> Double { sizeOverride(for: id) ?? settings.size }
+    func setSizeOverride(_ size: Double?, for id: String) {
+        if let size = size {
+            guard size.isFinite else { return }
+            defaults.set(min(MotionConstants.MAX_PET_SCALE, max(MotionConstants.MIN_PET_SCALE, size)), forKey: "pet.\(id).size")
+        } else { defaults.removeObject(forKey: "pet.\(id).size") }
+        pets.filter { $0.atlas.id == id }.forEach { $0.applyOptions() }
         objectWillChange.send()
     }
     func revealLibrary() { NSWorkspace.shared.open(library.root) }
@@ -322,6 +351,28 @@ final class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject {
                 guard abs(pet.panel.frame.width - 240) < 0.01 else { throw PetLibraryError.invalid("Size control") }
                 self.settings.size = 0.25
                 guard abs(pet.panel.frame.width - 48) < 0.01 && abs(pet.panel.frame.height - 52) < 0.01 else { throw PetLibraryError.invalid("25 percent size control") }
+                self.settings.size = 1
+                let otherEntry = self.entries.first { $0.id != entry.id }!
+                self.setPetVisible(otherEntry.id, show: true)
+                let otherPet = self.pets.first { $0.atlas.id == otherEntry.id }!
+                self.setSizeOverride(0.5, for: entry.id)
+                guard abs(pet.panel.frame.width - 96) < 0.01 && abs(otherPet.panel.frame.width - 192) < 0.01 else {
+                    throw PetLibraryError.invalid("Individual size changed another mini")
+                }
+                self.settings.size = 1.25
+                guard abs(pet.panel.frame.width - 96) < 0.01 && abs(otherPet.panel.frame.width - 240) < 0.01 else {
+                    throw PetLibraryError.invalid("Default size replaced an individual override")
+                }
+                let scaledPointer = NSPoint(x: pet.panel.frame.minX + 48, y: pet.panel.frame.minY + 43.5)
+                pet.tick(now, mouseLocation: NSPoint(x: pet.panel.frame.minX - 10, y: pet.panel.frame.minY - 10))
+                pet.tick(now + 0.01, mouseLocation: scaledPointer)
+                if !NSWorkspace.shared.accessibilityDisplayShouldReduceMotion && pet.engine.action != .waving {
+                    throw PetLibraryError.invalid("Hover hit testing ignored individual size")
+                }
+                pet.engine.reset()
+                self.setSizeOverride(nil, for: entry.id)
+                guard abs(pet.panel.frame.width - 240) < 0.01 else { throw PetLibraryError.invalid("Reset individual size") }
+                self.setPetVisible(otherEntry.id, show: false)
                 self.settings.size = 1
                 self.handleURL(URL(string: "pawlet://state?pet=\(entry.id)&state=waiting&seconds=5")!)
                 guard pet.engine.action == .waiting else { throw PetLibraryError.invalid("Dynamic mini command") }
@@ -434,7 +485,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject {
                     "dynamic_pet_url": true, "native_window_and_size": true, "library_count": self.entries.count,
                     "menu_bar": self.statusItem.button != nil, "hover_wave": true,
                     "stationary_hover_does_not_repeat": true, "paused_and_disabled_hover": true,
-                    "hover_reentry_ignores_loop_interval": true, "pet_size_25_percent": true,
+                    "hover_reentry_ignores_loop_interval": true, "pet_size_25_percent": true, "independent_mini_size_and_hit_testing": true,
                     "per_pet_hover_reactions": true, "preview_does_not_change_desktop": true, "preview_keeps_hidden_pets_hidden": true, "bulk_visibility_eight_minis": true, "one_click_visibility_preserves_selection": true, "preview_selection_matches_artwork": true, "preview_reduced_motion": true, "preview_frame_step": true]
                 self.section = "settings"
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) {
