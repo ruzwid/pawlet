@@ -10,6 +10,7 @@ struct LibraryView: View {
     @State private var proposedName = ""
     @State private var removing = false
     @State private var formatHelp = false
+    @State private var isExporting = false
     @State private var search = ""
     @State private var hoveredMiniID: String?
     @FocusState private var searchFocused: Bool
@@ -28,6 +29,7 @@ struct LibraryView: View {
         .foregroundStyle(PawletTheme.ink)
         .background(PawletTheme.canvas)
         .sheet(isPresented: $app.isCreating) { CreatePetView(app: app) }
+        .sheet(isPresented: $isExporting) { ExportMinisView(app: app) }
         .sheet(isPresented: $formatHelp) { formatPage }
         .alert("Pawlet", isPresented: Binding(get: { app.message != nil }, set: { if !$0 { app.message = nil } })) {
             Button("OK") { app.message = nil }
@@ -100,6 +102,8 @@ struct LibraryView: View {
                 Button { app.revealLibrary() } label: { Label("Minis folder", systemImage: "folder") }.buttonStyle(PawletActionStyle())
                     .accessibilityLabel("Open minis folder").help("Open the library folder containing all your minis")
                 Button { app.importPicker() } label: { Label("Import", systemImage: "square.and.arrow.down") }.buttonStyle(PawletActionStyle())
+                Button { isExporting = true } label: { Label("Export", systemImage: "square.and.arrow.up") }
+                    .buttonStyle(PawletActionStyle()).disabled(app.entries.isEmpty).help("Choose minis to share together in one ZIP")
                 Button { app.isCreating = true } label: { Label("Create", systemImage: "plus") }.buttonStyle(PawletActionStyle(prominent: true))
             }
             if app.entries.isEmpty {
@@ -183,7 +187,7 @@ struct LibraryView: View {
             Text("The app works without Codex. Codex is only used when you choose to create new artwork.")
             Text("No accounts, telemetry or network listener. Imported minis are image and metadata files; they don't run code.").font(.callout).foregroundStyle(.secondary)
             Button("Learn about mini packs") { formatHelp = true }.buttonStyle(PawletActionStyle())
-            Text("Version 0.6.8 · macOS 13+").font(.caption).foregroundStyle(.secondary)
+            Text("Version \(Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "—") · macOS 13+").font(.caption).foregroundStyle(.secondary)
             Spacer()
         }.padding(36).frame(maxWidth: .infinity, alignment: .leading)
     }
@@ -195,7 +199,7 @@ struct LibraryView: View {
             Text("manifest.json\nspritesheet.png").font(.system(.body, design: .monospaced)).padding(16)
                 .frame(maxWidth: .infinity, alignment: .leading).background(.quaternary, in: PawletTheme.roundedShape(10))
             Text("The JSON names the mini and its sprite format. The transparent PNG holds every pose in a fixed grid. Preview images are optional.")
-            Text("Import also accepts a Codex mini folder or ZIP with pet.json and its sprite sheet. Use Share → Export for Codex to save the same artwork in that format, or use the folder button at the top of the library to browse all your minis.").font(.callout)
+            Text("Import also accepts a Codex mini folder or ZIP with pet.json and its sprite sheet. Use Export in the toolbar to search and select minis for one ZIP, or Share → Export for Codex to save the same artwork in that format, or use the folder button at the top of the library to browse all your minis.").font(.callout)
             Text("v2: 1536 × 2288, 192 × 208 cells, 9 animations + 16 gaze poses.\nv1: 1536 × 1872, 9 animations without gaze tracking.").font(.callout).foregroundStyle(.secondary)
             Text("A regular photo is a creation reference, not an animated mini. Use Create to turn it into one.").font(.callout)
             HStack { Spacer(); Button("Got it") { formatHelp = false }.buttonStyle(PawletActionStyle(prominent: true)).keyboardShortcut(.defaultAction) }

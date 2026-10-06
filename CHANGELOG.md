@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.7.0
+
+- Add Export beside Import with a searchable multi-select sheet, Select all/results and a selection count.
+- Save selected minis in one ZIP with an independent Pawlet/Codex-compatible folder per mini, preserving exact artwork and metadata.
+- Import collection ZIPs directly, skip existing IDs with a summary, and keep archive validation and size limits.
+
 ## 0.6.9
 
 - Remove slider tick marks in Settings and individual mini size controls while preserving stepped values and accessibility adjustments.

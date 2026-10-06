@@ -42,3 +42,9 @@ Pawlet also imports a Codex pet folder or ZIP with `pet.json` and `spritesheet.p
 Share → Export for Codex saves `pet.json`, `spritesheet.png` and the Pawlet manifest together. Save under `~/.codex/pets/` for local desktop selection. This is separate from ChatGPT Work web upload. It requires no artwork regeneration or hosted pet creation. A compatible ZIP may wrap one pet in one folder and include README.md; canonical .petpack files stay flat with the original schema above.
 
 Pawlet runtime imports tolerate extra poses in unused cells and ignore Finder metadata in compatible ZIPs. This does not relax the authoring rules above: new generated packs must still pass the helper’s strict unused-cell validation.
+
+## Bulk sharing
+
+Pawlet’s toolbar Export saves a selection as one ordinary ZIP. Each mini has a folder named after its stable ID containing `manifest.json`, `pet.json` and its exact `spritesheet.png`. Matching display names are safe because folders use IDs. Import this ZIP directly into Pawlet, or extract and use the individual folders in Codex’s local minis directory. Desktop size, position and visibility preferences are not part of the artwork pack.
+
+Collections support up to 100 minis, 600 ZIP entries and 250 MiB compressed/uncompressed data in total, with the existing per-file image and metadata limits. Nested folders, links, code and mixed flat/collection layouts are rejected. Existing IDs are skipped rather than overwritten; other valid minis continue importing. Individual `.petpack` files keep their flat layout and existing limits.
