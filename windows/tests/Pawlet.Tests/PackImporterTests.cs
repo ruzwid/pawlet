@@ -21,6 +21,31 @@ public class PackImporterTests
     }
 
     [Fact]
+    public void Rejects_manifest_omitting_description()
+    {
+        var png = TestPng.Solid(1536, 1872);
+        var manifest = """{"schemaVersion":1,"id":"mochi-test","name":"Mochi","spriteVersion":1,"atlas":"spritesheet.png"}""";
+        var zip = TestZip.Create(
+        [
+            ("manifest.json", Encoding.UTF8.GetBytes(manifest)),
+            ("spritesheet.png", png),
+        ]);
+        var root = NewTempLibrary();
+        try
+        {
+            Assert.Throws<InvalidDataException>(() => new PackImporter().ImportPetpack(zip, root));
+        }
+        finally
+        {
+            File.Delete(zip);
+            if (Directory.Exists(root))
+            {
+                Directory.Delete(root, recursive: true);
+            }
+        }
+    }
+
+    [Fact]
     public void Imports_flat_petpack_with_valid_manifest()
     {
         var png = TestPng.Solid(1536, 1872);
