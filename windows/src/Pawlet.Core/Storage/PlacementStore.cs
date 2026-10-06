@@ -67,7 +67,37 @@ public sealed class PlacementStore
         }
 
         var json = JsonSerializer.Serialize(store._document, JsonOptions);
-        File.WriteAllText(path, json);
+        var tempPath = path + ".tmp";
+        try
+        {
+            File.WriteAllText(tempPath, json);
+            File.Move(tempPath, path, overwrite: true);
+        }
+        catch (IOException)
+        {
+            TryDelete(tempPath);
+        }
+        catch (UnauthorizedAccessException)
+        {
+            TryDelete(tempPath);
+        }
+    }
+
+    private static void TryDelete(string path)
+    {
+        try
+        {
+            if (File.Exists(path))
+            {
+                File.Delete(path);
+            }
+        }
+        catch (IOException)
+        {
+        }
+        catch (UnauthorizedAccessException)
+        {
+        }
     }
 
     public static string? NormalizeAppKey(string? path)
