@@ -28,7 +28,8 @@ public sealed record PetManifest(
         }
 
         if (string.IsNullOrWhiteSpace(Name) || Name.Length > 60 || Name.Any(char.IsControl)
-            || Description.Length > 600 || (Author?.Length ?? 0) > 100)
+            || string.IsNullOrEmpty(Description) || Description.Length > 600
+            || (Author?.Length ?? 0) > 100)
         {
             throw new InvalidDataException("The mini name or description is too long or invalid.");
         }
