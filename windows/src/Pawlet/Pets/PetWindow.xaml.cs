@@ -60,10 +60,33 @@ public partial class PetWindow : Window
 
     public bool ClickThrough { get; set; }
 
+    public bool IsDragging => _dragging;
+
+    /// <summary>True while a placement fade is in flight (Task 5). Task 4 always false.</summary>
+    public bool PlacementTransitionActive { get; private set; }
+
     public double Scale
     {
         get => _scale;
         set => ApplyScale(value);
+    }
+
+    /// <summary>
+    /// Apply remembered origin/scale. Task 4 snaps immediately; Task 5 replaces with fade.
+    /// </summary>
+    public void ApplyRememberedPlacement(Point? origin, double? scale, double settingsOpacity)
+    {
+        _ = settingsOpacity;
+        if (origin is { } point)
+        {
+            Left = point.X;
+            Top = point.Y;
+        }
+
+        if (scale is { } value)
+        {
+            Scale = value;
+        }
     }
 
     /// <summary>
