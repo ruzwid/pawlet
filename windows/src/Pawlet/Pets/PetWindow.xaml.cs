@@ -16,6 +16,7 @@ public partial class PetWindow : Window
     private Point _dragStart;
     private bool _dragging;
     private bool _moved;
+    private bool _alive = true;
 
     public PetWindow(AtlasSheet atlas)
     {
@@ -23,6 +24,7 @@ public partial class PetWindow : Window
         _atlas = atlas;
         InitializeComponent();
 
+        ShowActivated = false;
         Width = AtlasSheet.CellWidth;
         Height = AtlasSheet.CellHeight;
         SpriteImage.Source = _atlas.Frame(_currentFrame);
@@ -39,13 +41,35 @@ public partial class PetWindow : Window
         MouseLeftButtonDown += OnMouseLeftButtonDown;
         MouseMove += OnMouseMove;
         MouseLeftButtonUp += OnMouseLeftButtonUp;
-        Closed += (_, _) => _timer.Stop();
+        Closed += (_, _) => TearDown();
     }
 
     public AnimationEngine Engine => _engine;
 
+    /// <summary>
+    /// Stops the render timer and gates atlas callers so dispose cannot race
+    /// a queued tick or <c>WM_NCHITTEST</c> sample.
+    /// </summary>
+    public void TearDown()
+    {
+        if (!_alive)
+        {
+            return;
+        }
+
+        _alive = false;
+        _timer.Stop();
+        _timer.Tick -= OnTick;
+        SpriteImage.Source = null;
+    }
+
     private void OnTick(object? sender, EventArgs e)
     {
+        if (!_alive)
+        {
+            return;
+        }
+
         var now = Stopwatch.GetTimestamp() / (double)Stopwatch.Frequency;
         var frame = _engine.Frame(now);
         if (frame == _currentFrame)
@@ -59,6 +83,11 @@ public partial class PetWindow : Window
 
     private byte SampleAlpha(Point client)
     {
+        if (!_alive)
+        {
+            return 0;
+        }
+
         var x = (int)Math.Floor(client.X);
         var y = (int)Math.Floor(client.Y);
         return _atlas.AlphaAt(_currentFrame, x, y);
