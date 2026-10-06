@@ -18,6 +18,7 @@ public partial class App : Application
     };
 
     private PetRuntime? _runtime;
+    private ForegroundWatcher? _foregroundWatcher;
     private AppTray? _tray;
     private SettingsModel _settings = new();
     private LibraryWindow? _library;
@@ -28,11 +29,15 @@ public partial class App : Application
         base.OnStartup(e);
 
         _runtime = new PetRuntime();
+        _foregroundWatcher = new ForegroundWatcher();
+        _foregroundWatcher.Changed += path => _runtime?.OnForegroundAppChanged(path);
         Exit += (_, _) =>
         {
             _tray?.Dispose();
             _tray = null;
             _library = null;
+            _foregroundWatcher?.Dispose();
+            _foregroundWatcher = null;
             _runtime?.Dispose();
             _runtime = null;
         };

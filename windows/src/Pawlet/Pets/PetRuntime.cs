@@ -129,6 +129,13 @@ public sealed class PetRuntime : IDisposable
         }
     }
 
+    /// <summary>Foreground app changed (normalized path or null). Placement apply lands in a later task.</summary>
+    public void OnForegroundAppChanged(string? appKey)
+    {
+        ObjectDisposedException.ThrowIf(_disposed, this);
+        _ = appKey;
+    }
+
     public void Dispose()
     {
         if (_disposed)
