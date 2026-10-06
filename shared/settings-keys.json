@@ -1,0 +1,47 @@
+[
+  {
+    "key": "scale",
+    "type": "number",
+    "default": 1.0
+  },
+  {
+    "key": "opacity",
+    "type": "number",
+    "default": 1.0
+  },
+  {
+    "key": "speed",
+    "type": "number",
+    "default": 1.0
+  },
+  {
+    "key": "pause",
+    "type": "boolean",
+    "default": false
+  },
+  {
+    "key": "animateIdle",
+    "type": "boolean",
+    "default": false
+  },
+  {
+    "key": "hoverReaction",
+    "type": "string",
+    "default": "wave"
+  },
+  {
+    "key": "animationIntervalSeconds",
+    "type": "number",
+    "default": 10
+  },
+  {
+    "key": "clickThrough",
+    "type": "boolean",
+    "default": false
+  },
+  {
+    "key": "startAtLogin",
+    "type": "boolean",
+    "default": false
+  }
+]
