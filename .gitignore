@@ -11,3 +11,4 @@ __pycache__/
 *.validation.json
 *.petpack
 !examples/*.petpack
+!shared/fixtures/packs/*.petpack
