@@ -74,4 +74,10 @@ enum AppPlacement {
         }
         return clampSize(settingsSize)
     }
+
+    /// True when restoring a remembered place should cross-fade (origin and/or width changed).
+    static func warrantsTransition(fromOrigin: NSPoint, toOrigin: NSPoint?, fromWidth: CGFloat, toWidth: CGFloat) -> Bool {
+        if let toOrigin, hypot(toOrigin.x - fromOrigin.x, toOrigin.y - fromOrigin.y) > 0.5 { return true }
+        return abs(fromWidth - toWidth) > 0.5
+    }
 }

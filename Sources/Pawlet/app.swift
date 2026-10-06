@@ -91,7 +91,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject {
             defaults.set(entry.id == "mochi-sample", forKey: "pet.\(entry.id).visible")
         }
         for entry in entries where defaults.bool(forKey: "pet.\(entry.id).visible") { setPetVisible(entry.id, show: true) }
-        applyRememberedAppPlacement()
+        applyRememberedAppPlacement(animated: false)
         for url in pendingURLs { handleURL(url) }; pendingURLs.removeAll()
         importPets(pendingImports); pendingImports.removeAll()
         startTimer()
@@ -155,7 +155,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject {
         if let pet = pets.first(where: { $0.atlas.id == id }) {
             pet.setVisible(show)
             if show, settings.rememberPlacePerApp, let bundleID = placementAppBundleID() {
-                pet.applyRememberedPlacement(bundleID: bundleID)
+                pet.applyRememberedPlacement(bundleID: bundleID, animated: false)
             }
             if !show { pets.removeAll { $0.atlas.id == id }; pet.savePosition(); pet.panel.close() }
         }
@@ -291,14 +291,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject {
         objectWillChange.send()
     }
 
-    func applyRememberedAppPlacement() {
+    func applyRememberedAppPlacement(animated: Bool = true) {
         guard settings.rememberPlacePerApp else { return }
         if pets.contains(where: { $0.isDragging }) { return }
         guard let bundleID = placementAppBundleID() else { return }
-        pets.filter { $0.visible }.forEach { $0.applyRememberedPlacement(bundleID: bundleID) }
+        pets.filter { $0.visible }.forEach { $0.applyRememberedPlacement(bundleID: bundleID, animated: animated) }
     }
 
-    @objc func frontmostAppChanged(_ notification: Notification) { applyRememberedAppPlacement() }
+    @objc func frontmostAppChanged(_ notification: Notification) { applyRememberedAppPlacement(animated: true) }
     func revealLibrary() { NSWorkspace.shared.open(library.root) }
     func revealSelected() {
         guard let selected = selected else { return }

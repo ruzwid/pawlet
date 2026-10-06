@@ -44,6 +44,7 @@ final class DesktopPet: NSObject {
     private var wanderTarget: CGFloat?
     private var lastTick: Double = ProcessInfo.processInfo.systemUptime
     private var hoverGreeting = HoverGreeting()
+    private var placementTransition: UUID?
     var visible: Bool { panel.isVisible }
     var isDragging: Bool { dragging }
 
@@ -115,9 +116,42 @@ final class DesktopPet: NSObject {
         return i.isNull ? 0 : i.width * i.height
     }
 
-    func applyRememberedPlacement(bundleID: String) {
+    func applyRememberedPlacement(bundleID: String, animated: Bool = true) {
         guard let owner = owner else { return }
-        if let origin = AppPlacement.rememberedOrigin(defaults: owner.defaults, petID: atlas.id, bundleID: bundleID) {
+        let origin = AppPlacement.rememberedOrigin(defaults: owner.defaults, petID: atlas.id, bundleID: bundleID)
+        let targetWidth = CGFloat(owner.miniSize(for: atlas.id)) * 192
+        let shouldAnimate = animated
+            && !NSWorkspace.shared.accessibilityDisplayShouldReduceMotion
+            && AppPlacement.warrantsTransition(fromOrigin: panel.frame.origin, toOrigin: origin,
+                fromWidth: panel.frame.width, toWidth: targetWidth)
+        guard shouldAnimate else {
+            placementTransition = nil
+            applyRememberedPlacementNow(origin: origin)
+            return
+        }
+        let token = UUID()
+        placementTransition = token
+        let targetAlpha = CGFloat(owner.settings.opacity)
+        NSAnimationContext.runAnimationGroup({ context in
+            context.duration = 0.12
+            panel.animator().alphaValue = 0
+        }, completionHandler: { [weak self] in
+            guard let self, self.placementTransition == token else { return }
+            self.applyRememberedPlacementNow(origin: origin)
+            self.panel.alphaValue = 0
+            NSAnimationContext.runAnimationGroup({ context in
+                context.duration = 0.15
+                self.panel.animator().alphaValue = targetAlpha
+            }, completionHandler: { [weak self] in
+                guard let self, self.placementTransition == token else { return }
+                self.placementTransition = nil
+                self.panel.alphaValue = targetAlpha
+            })
+        })
+    }
+
+    private func applyRememberedPlacementNow(origin: NSPoint?) {
+        if let origin {
             wanderTarget = nil
             panel.setFrameOrigin(origin)
         }

@@ -77,5 +77,12 @@ enum AppPlacementTests {
         AppPlacement.clearSize(defaults: defaults, petID: "mochi-sample", appBundleID: nil, selfBundleID: selfID)
         try ProjectTests.require(defaults.object(forKey: "pet.mochi-sample.size") == nil,
             "Clearing with no trackable app must remove pet-level size")
+
+        try ProjectTests.require(AppPlacement.warrantsTransition(fromOrigin: NSPoint(x: 10, y: 10), toOrigin: NSPoint(x: 40, y: 10),
+            fromWidth: 192, toWidth: 192), "Origin change must warrant a transition")
+        try ProjectTests.require(AppPlacement.warrantsTransition(fromOrigin: NSPoint(x: 10, y: 10), toOrigin: nil,
+            fromWidth: 192, toWidth: 96), "Size change must warrant a transition")
+        try ProjectTests.require(!AppPlacement.warrantsTransition(fromOrigin: NSPoint(x: 10, y: 10), toOrigin: NSPoint(x: 10.2, y: 10),
+            fromWidth: 192, toWidth: 192.2), "Tiny deltas must not warrant a transition")
     }
 }
