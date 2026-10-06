@@ -124,11 +124,27 @@ dotnet run --project windows/src/Pawlet -c Release -- --import path\to\Mochi.pet
 
 An empty library seeds bundled Mochi on first run and opens the library window. The tray offers Show library, Show all, Hide all, Pause, and Quit. Closing the library keeps desktop minis running; Quit hides pets, then exits.
 
+The library is a card grid (composition A): **Your minis** heading, idle-cell stages, Show/Hide per mini, filled olive Import, and a compact Settings stack. Light chrome brushes come from `shared/tokens/pawlet.tokens.json` via `windows/src/Pawlet/Themes/PawletTokens.xaml`. Dark WPF theme is not wired yet.
+
 Data lives under `%AppData%\Pawlet\` (`Library\<id>\` for packs, `settings.json` for preferences). **Start with Windows** writes a CurrentUser `Run` value named `Pawlet`. To disable it: uncheck the option in the library Settings panel, turn it off in Task Manager → Startup apps, or delete `HKCU\Software\Microsoft\Windows\CurrentVersion\Run\Pawlet` in Registry Editor.
 
 **MVP non-goals.** This preview is unsigned (no Microsoft Store or code-signing pipeline). It does not include Codex Create, Export for Codex / `.petpack` export, full Mac Settings parity (Spaces, Dock visibility, animation preview inspector), WinUI or Tauri pet hosts, an installer (MSIX/EXE), or gaze polish beyond the animation engine port. Packs are data only; import rejects path traversal and other unsafe ZIP entries.
 
 CI: `.github/workflows/windows.yml` builds `windows/Pawlet.sln` and runs `dotnet test` on `windows-latest`.
+
+## Shared contracts
+
+Mac and Windows share checked-in JSON under `shared/` so engine timings, settings keys, pack reject fixtures, and design tokens cannot drift silently:
+
+| Path | Role |
+| --- | --- |
+| `shared/engine-timings.json` | Animation state rows, frame counts, seconds per frame, motion limits |
+| `shared/settings-keys.json` | Preference key names, types, and defaults |
+| `shared/fixtures/engine/wave-greet.json` | Golden wave/greet timing case |
+| `shared/fixtures/packs/zip-slip-evil.petpack` | Pack import must reject (`../evil.png`) |
+| `shared/tokens/pawlet.tokens.json` | Light/dark `#RRGGBB` for every `PawletTheme` color role |
+
+Mac CI runs `python3 scripts/check-engine-timings.py` and `python3 scripts/check-tokens.py` after checkout. Windows xUnit tests load the engine and pack fixtures from `shared/`.
 
 ## Next milestones
 
