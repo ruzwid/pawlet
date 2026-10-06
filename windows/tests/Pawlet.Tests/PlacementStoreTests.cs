@@ -17,6 +17,14 @@ public class PlacementStoreTests
     }
 
     [Fact]
+    public void IsTrackable_fails_closed_when_self_unresolvable()
+    {
+        var chrome = Path.GetFullPath(@"C:\Program Files\Google\Chrome\Application\chrome.exe");
+        Assert.False(PlacementStore.IsTrackable(chrome, ""));
+        Assert.False(PlacementStore.IsTrackable(chrome, "   "));
+    }
+
+    [Fact]
     public void Incomplete_origin_does_not_restore()
     {
         var path = TempPlacementsPath();

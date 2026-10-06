@@ -21,6 +21,7 @@ public sealed class PetRuntime : IDisposable
     private PlacementStore _placements = PlacementStore.Load();
     private SettingsModel _settings = new();
     private string? _foregroundAppKey;
+    private string? _lastTrackableAppKey;
     private bool _disposed;
     private bool _paused;
     private bool? _startWithWindowsApplied;
@@ -100,7 +101,7 @@ public sealed class PetRuntime : IDisposable
         var window = new PetWindow(atlas);
         var petId = manifest.Id;
         window.OnDragEnded = () => SaveOrigin(petId, window.Left, window.Top, stampAppSlot: true);
-        window.ResolveEffectiveScale = () => ResolvedScale(petId);
+        window.ResolveEffectiveScale = () => ResolvedScaleForStamp(petId);
         window.OnSetSizeOverride = size => SetSizeOverride(petId, size);
         window.Closed += (_, _) =>
         {
@@ -115,16 +116,26 @@ public sealed class PetRuntime : IDisposable
 
         var index = _open.Count;
         var global = _placements.RememberedGlobalOrigin(petId);
+        var showScale = ResolvedScale(petId);
+        var showWidth = AtlasSheet.CellWidth * showScale;
+        var showHeight = AtlasSheet.CellHeight * showScale;
         if (global is { } origin)
         {
-            window.Left = origin.X;
-            window.Top = origin.Y;
+            var clamped = PetWindow.ClampOriginToWorkArea(origin.X, origin.Y, showWidth, showHeight);
+            window.Left = clamped.X;
+            window.Top = clamped.Y;
         }
         else
         {
             // Stagger default placement so multiple pets do not stack exactly.
-            window.Left = SystemParameters.WorkArea.Right - AtlasSheet.CellWidth * _settings.Scale - 24 - index * 200;
-            window.Top = SystemParameters.WorkArea.Bottom - AtlasSheet.CellHeight * _settings.Scale - 18;
+            var work = SystemParameters.WorkArea;
+            var staggered = PetWindow.ClampOriginToWorkArea(
+                work.Right - showWidth - 24 - index * 200,
+                work.Bottom - showHeight - 18,
+                showWidth,
+                showHeight);
+            window.Left = staggered.X;
+            window.Top = staggered.Y;
         }
 
         var entry = new Entry(window, atlas, petId);
@@ -169,7 +180,20 @@ public sealed class PetRuntime : IDisposable
     public void OnForegroundAppChanged(string? appKey)
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
+
+        // Mid-drag Alt-Tab must not retarget the stamp key.
+        if (AnyWindowDragging)
+        {
+            return;
+        }
+
         _foregroundAppKey = PlacementStore.NormalizeAppKey(appKey);
+        if (_selfExePath is not null
+            && PlacementStore.IsTrackable(_foregroundAppKey, _selfExePath))
+        {
+            _lastTrackableAppKey = _foregroundAppKey;
+        }
+
         ApplyAppPlacementToOpenWindows();
     }
 
@@ -199,9 +223,10 @@ public sealed class PetRuntime : IDisposable
         ArgumentException.ThrowIfNullOrEmpty(petId);
 
         _placements.WriteGlobalOrigin(petId, left, top);
-        if (stampAppSlot && UsesAppPlacement && _foregroundAppKey is not null)
+        var stampKey = StampAppKey;
+        if (stampAppSlot && UsesStampPlacement && stampKey is not null)
         {
-            _placements.WriteAppOrigin(petId, _foregroundAppKey, left, top);
+            _placements.WriteAppOrigin(petId, stampKey, left, top);
         }
 
         PlacementStore.Save(_placements);
@@ -212,15 +237,16 @@ public sealed class PetRuntime : IDisposable
         ObjectDisposedException.ThrowIf(_disposed, this);
         ArgumentException.ThrowIfNullOrEmpty(petId);
 
-        if (UsesAppPlacement && _foregroundAppKey is not null)
+        var stampKey = StampAppKey;
+        if (UsesStampPlacement && stampKey is not null)
         {
             if (size is { } appSize)
             {
-                _placements.WriteAppSize(petId, _foregroundAppKey, appSize);
+                _placements.WriteAppSize(petId, stampKey, appSize);
             }
             else
             {
-                _placements.ClearAppSize(petId, _foregroundAppKey);
+                _placements.ClearAppSize(petId, stampKey);
             }
         }
         else if (size is { } petSize)
@@ -238,11 +264,15 @@ public sealed class PetRuntime : IDisposable
         {
             if (string.Equals(entry.PetId, petId, StringComparison.OrdinalIgnoreCase))
             {
-                entry.Window.Scale = ResolvedScale(petId);
+                entry.Window.Scale = ResolvedScaleForStamp(petId);
             }
         }
     }
 
+    /// <summary>
+    /// Scale for Settings / apply when the true foreground app drives placement
+    /// (Library Settings uses Settings.Scale when Pawlet is frontmost).
+    /// </summary>
     public double ResolvedScale(string petId)
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
@@ -251,6 +281,20 @@ public sealed class PetRuntime : IDisposable
             petId,
             UsesAppPlacement,
             _foregroundAppKey,
+            _settings.Scale);
+    }
+
+    /// <summary>
+    /// Scale for pet context Size: falls back to last trackable when current is self/null.
+    /// </summary>
+    public double ResolvedScaleForStamp(string petId)
+    {
+        ObjectDisposedException.ThrowIf(_disposed, this);
+        ArgumentException.ThrowIfNullOrEmpty(petId);
+        return _placements.ResolvedScale(
+            petId,
+            UsesStampPlacement,
+            StampAppKey,
             _settings.Scale);
     }
 
@@ -270,9 +314,25 @@ public sealed class PetRuntime : IDisposable
         _disposed = true;
     }
 
+    /// <summary>True when the live foreground app is trackable (not self).</summary>
     private bool UsesAppPlacement =>
         _settings.RememberPlacePerApp
-        && PlacementStore.IsTrackable(_foregroundAppKey, _selfExePath ?? string.Empty);
+        && _selfExePath is not null
+        && PlacementStore.IsTrackable(_foregroundAppKey, _selfExePath);
+
+    /// <summary>True when pet interaction can stamp/read a per-app slot (incl. last trackable).</summary>
+    private bool UsesStampPlacement =>
+        _settings.RememberPlacePerApp && StampAppKey is not null;
+
+    private string? StampAppKey =>
+        PlacementStampKey.Select(
+            _foregroundAppKey,
+            _lastTrackableAppKey,
+            _selfExePath,
+            AnyWindowDragging);
+
+    private bool AnyWindowDragging =>
+        _open.Values.Any(entry => entry.Window.IsDragging);
 
     private void PersistGlobalOrigin(Entry entry)
     {
@@ -286,6 +346,7 @@ public sealed class PetRuntime : IDisposable
         window.Paused = _paused;
         if (!window.PlacementTransitionActive)
         {
+            // Settings path: when Library is frontmost, UsesAppPlacement is false → Settings.Scale.
             window.Scale = ResolvedScale(entry.PetId);
             window.Opacity = _settings.Opacity;
         }

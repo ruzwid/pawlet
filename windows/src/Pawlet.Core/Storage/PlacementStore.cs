@@ -106,7 +106,8 @@ public sealed class PlacementStore
         var self = NormalizeAppKey(selfExePath);
         if (self is null)
         {
-            return true;
+            // Self unresolvable: fail closed (never treat paths as trackable).
+            return false;
         }
 
         return !string.Equals(normalized, self, StringComparison.OrdinalIgnoreCase);

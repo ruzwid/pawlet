@@ -1,15 +1,21 @@
 using System.Diagnostics;
+using System.Runtime.InteropServices;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
+using System.Windows.Interop;
 using System.Windows.Media.Animation;
 using System.Windows.Threading;
 using Pawlet.Core.Engine;
+using Pawlet.Core.Storage;
 
 namespace Pawlet.Pets;
 
 public partial class PetWindow : Window
 {
+    private const int GwlExStyle = -20;
+    private const int WsExNoActivate = 0x08000000;
+
     private static readonly double[] SizeSteps =
     [
         0.25, 0.50, 0.75, 1.00, 1.25, 1.50, 1.75,
@@ -91,6 +97,28 @@ public partial class PetWindow : Window
     }
 
     /// <summary>
+    /// Clamp a screen origin so the pet stays inside the primary work area.
+    /// </summary>
+    public static Point ClampOriginToWorkArea(double x, double y, double width, double height)
+    {
+        var work = SystemParameters.WorkArea;
+        var (cx, cy) = PlacementGeometry.ClampOriginToWorkArea(
+            x, y, width, height, work.Left, work.Top, work.Right, work.Bottom);
+        return new Point(cx, cy);
+    }
+
+    protected override void OnSourceInitialized(EventArgs e)
+    {
+        base.OnSourceInitialized(e);
+
+        // ShowActivated=false only covers the first Show; OR WS_EX_NOACTIVATE so
+        // click/drag/context menu do not steal foreground from the user's app.
+        var hwnd = new WindowInteropHelper(this).Handle;
+        var exStyle = GetWindowLongPtr(hwnd, GwlExStyle).ToInt64();
+        _ = SetWindowLongPtr(hwnd, GwlExStyle, (IntPtr)(exStyle | WsExNoActivate));
+    }
+
+    /// <summary>
     /// Apply remembered origin/scale with a short opacity fade, or snap when client-area animations are off.
     /// </summary>
     public void ApplyRememberedPlacement(Point? origin, double? scale, double settingsOpacity)
@@ -105,9 +133,9 @@ public partial class PetWindow : Window
         double? targetTop = null;
         if (origin is { } point)
         {
-            var work = SystemParameters.WorkArea;
-            targetLeft = Clamp(point.X, work.Left, Math.Max(work.Left, work.Right - width));
-            targetTop = Clamp(point.Y, work.Top, Math.Max(work.Top, work.Bottom - height));
+            var clamped = ClampOriginToWorkArea(point.X, point.Y, width, height);
+            targetLeft = clamped.X;
+            targetTop = clamped.Y;
         }
 
         var originChanges = targetLeft is { } left
@@ -366,6 +394,21 @@ public partial class PetWindow : Window
         e.Handled = true;
     }
 
-    private static double Clamp(double value, double min, double max) =>
-        Math.Min(max, Math.Max(min, value));
+    [DllImport("user32.dll", EntryPoint = "GetWindowLong", SetLastError = true)]
+    private static extern IntPtr GetWindowLongPtr32(IntPtr hWnd, int nIndex);
+
+    [DllImport("user32.dll", EntryPoint = "GetWindowLongPtr", SetLastError = true)]
+    private static extern IntPtr GetWindowLongPtr64(IntPtr hWnd, int nIndex);
+
+    [DllImport("user32.dll", EntryPoint = "SetWindowLong", SetLastError = true)]
+    private static extern IntPtr SetWindowLongPtr32(IntPtr hWnd, int nIndex, IntPtr dwNewLong);
+
+    [DllImport("user32.dll", EntryPoint = "SetWindowLongPtr", SetLastError = true)]
+    private static extern IntPtr SetWindowLongPtr64(IntPtr hWnd, int nIndex, IntPtr dwNewLong);
+
+    private static IntPtr GetWindowLongPtr(IntPtr hWnd, int nIndex) =>
+        IntPtr.Size == 8 ? GetWindowLongPtr64(hWnd, nIndex) : GetWindowLongPtr32(hWnd, nIndex);
+
+    private static IntPtr SetWindowLongPtr(IntPtr hWnd, int nIndex, IntPtr dwNewLong) =>
+        IntPtr.Size == 8 ? SetWindowLongPtr64(hWnd, nIndex, dwNewLong) : SetWindowLongPtr32(hWnd, nIndex, dwNewLong);
 }
