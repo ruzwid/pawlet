@@ -47,14 +47,16 @@ public sealed class PetRuntime : IDisposable
         var wasRemembering = _settings.RememberPlacePerApp;
         _settings = settings;
         _paused = settings.Pause;
-        foreach (var entry in _open.Values)
-        {
-            ApplyToWindow(entry);
-        }
 
+        // Placement before ApplyToWindow so Scale is not assigned before the fade starts.
         if (!wasRemembering && _settings.RememberPlacePerApp)
         {
             ApplyAppPlacementToOpenWindows();
+        }
+
+        foreach (var entry in _open.Values)
+        {
+            ApplyToWindow(entry);
         }
 
         if (_startWithWindowsApplied != settings.StartWithWindows)
@@ -282,9 +284,9 @@ public sealed class PetRuntime : IDisposable
     {
         var window = entry.Window;
         window.Paused = _paused;
-        window.Scale = ResolvedScale(entry.PetId);
         if (!window.PlacementTransitionActive)
         {
+            window.Scale = ResolvedScale(entry.PetId);
             window.Opacity = _settings.Opacity;
         }
 

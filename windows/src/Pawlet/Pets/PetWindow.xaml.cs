@@ -133,7 +133,8 @@ public partial class PetWindow : Window
             }
         }
 
-        if (!SystemParameters.ClientAreaAnimation)
+        // Never fade before first Show: window is not loaded/visible yet.
+        if (!SystemParameters.ClientAreaAnimation || !IsLoaded || !IsVisible)
         {
             CancelPlacementAnimation();
             ApplyGeometry();
