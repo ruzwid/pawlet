@@ -7,51 +7,167 @@
         MinWidth="360"
         MinHeight="420"
         WindowStartupLocation="CenterScreen"
-        ShowInTaskbar="True">
-  <DockPanel Margin="12">
-    <StackPanel DockPanel.Dock="Bottom" Margin="0,12,0,0">
-      <TextBlock Text="Settings" FontWeight="SemiBold" Margin="0,0,0,8" />
+        ShowInTaskbar="True"
+        Background="{StaticResource PawletCanvasBrush}"
+        Foreground="{StaticResource PawletInkBrush}"
+        FontSize="13"
+        SnapsToDevicePixels="True"
+        UseLayoutRounding="True">
+  <DockPanel Margin="16">
+    <StackPanel DockPanel.Dock="Bottom" Margin="0,16,0,0">
+      <Border Height="1" Background="{StaticResource PawletBorderBrush}" Margin="0,0,0,12" />
+      <TextBlock Text="Settings"
+                 FontWeight="SemiBold"
+                 FontSize="13"
+                 Margin="0,0,0,6" />
       <CheckBox Content="Pause" IsChecked="{Binding Pause}" Margin="0,2" />
       <CheckBox Content="Animate idle" IsChecked="{Binding AnimateIdle}" Margin="0,2" />
       <CheckBox Content="Click-through" IsChecked="{Binding ClickThrough}" Margin="0,2" />
       <CheckBox Content="Start with Windows" IsChecked="{Binding StartWithWindows}" Margin="0,2" />
-      <TextBlock Text="Hover reaction" Margin="0,8,0,2" />
+      <TextBlock Text="Hover reaction"
+                 Foreground="{StaticResource PawletSecondaryBrush}"
+                 Margin="0,8,0,2" />
       <ComboBox x:Name="HoverReactionBox" Margin="0,0,0,8" />
-      <TextBlock Text="Scale" Margin="0,4,0,0" />
+      <TextBlock Text="Scale"
+                 Foreground="{StaticResource PawletSecondaryBrush}"
+                 Margin="0,4,0,0" />
       <Slider Minimum="0.25" Maximum="1.75" TickFrequency="0.05" IsSnapToTickEnabled="True"
               Value="{Binding Scale, Mode=TwoWay}" />
-      <TextBlock Text="Opacity" Margin="0,4,0,0" />
+      <TextBlock Text="Opacity"
+                 Foreground="{StaticResource PawletSecondaryBrush}"
+                 Margin="0,4,0,0" />
       <Slider Minimum="0.3" Maximum="1" TickFrequency="0.05" IsSnapToTickEnabled="True"
               Value="{Binding Opacity, Mode=TwoWay}" />
-      <TextBlock Text="Speed" Margin="0,4,0,0" />
+      <TextBlock Text="Speed"
+                 Foreground="{StaticResource PawletSecondaryBrush}"
+                 Margin="0,4,0,0" />
       <Slider Minimum="0.5" Maximum="1.5" TickFrequency="0.05" IsSnapToTickEnabled="True"
               Value="{Binding Speed, Mode=TwoWay}" />
-      <TextBlock Text="Seconds between animations" Margin="0,4,0,0" />
+      <TextBlock Text="Seconds between animations"
+                 Foreground="{StaticResource PawletSecondaryBrush}"
+                 Margin="0,4,0,0" />
       <Slider Minimum="0" Maximum="60" TickFrequency="1" IsSnapToTickEnabled="True"
               Value="{Binding AnimationIntervalSeconds, Mode=TwoWay}" />
     </StackPanel>
 
     <DockPanel>
-      <DockPanel DockPanel.Dock="Top" Margin="0,0,0,8">
-        <TextBlock Text="Your minis" FontWeight="SemiBold" VerticalAlignment="Center" />
-        <Button Content="Import…" Width="88" HorizontalAlignment="Right" Click="OnImportClick" />
+      <DockPanel DockPanel.Dock="Top" Margin="0,0,0,14" LastChildFill="False">
+        <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+          <TextBlock Text="Your minis"
+                     FontSize="22"
+                     FontWeight="Bold"
+                     VerticalAlignment="Center" />
+          <TextBlock x:Name="MiniCountText"
+                     Text="0"
+                     FontSize="13"
+                     Foreground="{StaticResource PawletSecondaryBrush}"
+                     Margin="9,0,0,0"
+                     VerticalAlignment="Center" />
+        </StackPanel>
+        <Button DockPanel.Dock="Right"
+                Content="Import"
+                HorizontalAlignment="Right"
+                VerticalAlignment="Center"
+                Style="{StaticResource PawletPrimaryButtonStyle}"
+                Click="OnImportClick"
+                AutomationProperties.Name="Import mini pack" />
       </DockPanel>
-      <ListBox x:Name="PetList" HorizontalContentAlignment="Stretch">
-        <ListBox.ItemTemplate>
-          <DataTemplate>
-            <DockPanel Margin="0,4">
-              <Button DockPanel.Dock="Right" Width="72" Margin="8,0,0,0"
-                      Content="{Binding ActionLabel}"
-                      Tag="{Binding Directory}"
-                      Click="OnShowHideClick" />
+
+      <Grid>
+        <ListBox x:Name="PetList"
+                 Background="Transparent"
+                 BorderThickness="0"
+                 Padding="0"
+                 HorizontalContentAlignment="Stretch"
+                 ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                 ScrollViewer.CanContentScroll="False">
+          <ListBox.ItemContainerStyle>
+            <Style TargetType="ListBoxItem">
+              <Setter Property="Padding" Value="0" />
+              <Setter Property="Margin" Value="0,0,0,12" />
+              <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+              <Setter Property="Background" Value="Transparent" />
+              <Setter Property="FocusVisualStyle" Value="{x:Null}" />
+              <Setter Property="Template">
+                <Setter.Value>
+                  <ControlTemplate TargetType="ListBoxItem">
+                    <Border x:Name="Card"
+                            Background="{StaticResource PawletSurfaceBrush}"
+                            BorderBrush="{StaticResource PawletBorderBrush}"
+                            BorderThickness="1"
+                            CornerRadius="16"
+                            Padding="8">
+                      <ContentPresenter />
+                    </Border>
+                    <ControlTemplate.Triggers>
+                      <Trigger Property="IsSelected" Value="True">
+                        <Setter TargetName="Card" Property="BorderBrush" Value="{StaticResource PawletAccentBrush}" />
+                        <Setter TargetName="Card" Property="BorderThickness" Value="1.5" />
+                      </Trigger>
+                      <Trigger Property="IsMouseOver" Value="True">
+                        <Setter TargetName="Card" Property="BorderBrush" Value="{StaticResource PawletAccentBrush}" />
+                      </Trigger>
+                      <Trigger Property="IsKeyboardFocused" Value="True">
+                        <Setter TargetName="Card" Property="BorderBrush" Value="{StaticResource PawletAccentBrush}" />
+                        <Setter TargetName="Card" Property="BorderThickness" Value="1.5" />
+                      </Trigger>
+                    </ControlTemplate.Triggers>
+                  </ControlTemplate>
+                </Setter.Value>
+              </Setter>
+            </Style>
+          </ListBox.ItemContainerStyle>
+          <ListBox.ItemTemplate>
+            <DataTemplate>
               <StackPanel>
-                <TextBlock Text="{Binding Name}" FontWeight="SemiBold" />
-                <TextBlock Text="{Binding Id}" Foreground="Gray" FontSize="11" />
+                <Border Background="{StaticResource PawletStageBrush}"
+                        CornerRadius="10"
+                        Height="132"
+                        Margin="0,0,0,8"
+                        ClipToBounds="True">
+                  <Image Source="{Binding IdlePreview}"
+                         Stretch="Uniform"
+                         Margin="8"
+                         RenderOptions.BitmapScalingMode="HighQuality"
+                         AutomationProperties.Name="{Binding Name}" />
+                </Border>
+                <DockPanel LastChildFill="True">
+                  <Button DockPanel.Dock="Right"
+                          MinWidth="72"
+                          Margin="8,0,0,0"
+                          Content="{Binding ActionLabel}"
+                          Tag="{Binding Directory}"
+                          Style="{StaticResource PawletVisibilityButtonStyle}"
+                          Click="OnShowHideClick"
+                          AutomationProperties.Name="{Binding ActionLabel}" />
+                  <TextBlock Text="{Binding Name}"
+                             FontWeight="SemiBold"
+                             FontSize="14"
+                             VerticalAlignment="Center"
+                             TextTrimming="CharacterEllipsis" />
+                </DockPanel>
               </StackPanel>
-            </DockPanel>
-          </DataTemplate>
-        </ListBox.ItemTemplate>
-      </ListBox>
+            </DataTemplate>
+          </ListBox.ItemTemplate>
+        </ListBox>
+
+        <StackPanel x:Name="EmptyState"
+                    VerticalAlignment="Center"
+                    HorizontalAlignment="Center"
+                    MaxWidth="280"
+                    Visibility="Collapsed">
+          <TextBlock Text="Import a mini pack to keep you company."
+                     TextAlignment="Center"
+                     TextWrapping="Wrap"
+                     Foreground="{StaticResource PawletSecondaryBrush}"
+                     Margin="0,0,0,14" />
+          <Button Content="Import"
+                  HorizontalAlignment="Center"
+                  Style="{StaticResource PawletPrimaryButtonStyle}"
+                  Click="OnImportClick"
+                  AutomationProperties.Name="Import your first mini pack" />
+        </StackPanel>
+      </Grid>
     </DockPanel>
   </DockPanel>
 </Window>
