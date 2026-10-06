@@ -1,0 +1,20 @@
+name: Windows checks
+on:
+  push:
+    branches: [main]
+  pull_request:
+permissions:
+  contents: read
+jobs:
+  test:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+      # build (not test alone): WPF is not referenced by tests and would otherwise be skipped
+      - name: Build solution (Core + WPF + Tests)
+        run: dotnet build windows/Pawlet.sln -c Release
+      - name: Test
+        run: dotnet test windows/Pawlet.sln -c Release --no-build

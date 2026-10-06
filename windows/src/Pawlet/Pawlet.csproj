@@ -6,10 +6,20 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <UseWPF>true</UseWPF>
+    <!-- Allow restore/compile of the Windows TFM on macOS hosts (runtime still Windows-only). -->
+    <EnableWindowsTargeting>true</EnableWindowsTargeting>
   </PropertyGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\Pawlet.Core\Pawlet.Core.csproj" />
+  </ItemGroup>
+
+  <!-- Bundled sample for first-run seed / local testing (also discoverable via repo walk-up). -->
+  <ItemGroup>
+    <Content Include="..\..\..\Resources\Pets\Mochi\**\*"
+             Link="Resources\Pets\Mochi\%(RecursiveDir)%(Filename)%(Extension)"
+             CopyToOutputDirectory="PreserveNewest"
+             Condition="Exists('..\..\..\Resources\Pets\Mochi')" />
   </ItemGroup>
 
 </Project>
