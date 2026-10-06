@@ -14,6 +14,9 @@
       <CheckBox Content="Pause" IsChecked="{Binding Pause}" Margin="0,2" />
       <CheckBox Content="Animate idle" IsChecked="{Binding AnimateIdle}" Margin="0,2" />
       <CheckBox Content="Click-through" IsChecked="{Binding ClickThrough}" Margin="0,2" />
+      <CheckBox Content="Remember place per app" IsChecked="{Binding RememberPlacePerApp}" Margin="0,2" />
+      <TextBlock TextWrapping="Wrap" Foreground="Gray" FontSize="11" Margin="0,0,0,4"
+                 Text="Restore follows the topmost fullscreen app on the mini's monitor, or else the topmost window on that monitor. Dragging or resizing a mini while that app is active saves its place and size; switching back restores with a short fade. Wandering does not change a saved place. Apps without a saved place leave the mini where it is. Apps without a saved size use this mini's usual size. Windows animation-off skips the fade." />
       <CheckBox Content="Start with Windows" IsChecked="{Binding StartWithWindows}" Margin="0,2" />
       <TextBlock Text="Hover reaction" Margin="0,8,0,2" />
       <ComboBox x:Name="HoverReactionBox" Margin="0,0,0,8" />

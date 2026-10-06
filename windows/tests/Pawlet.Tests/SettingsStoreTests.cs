@@ -22,6 +22,7 @@ public class SettingsStoreTests
                 AnimationIntervalSeconds = 20,
                 ClickThrough = true,
                 StartWithWindows = true,
+                RememberPlacePerApp = true,
             };
 
             SettingsStore.Save(original, path);
@@ -36,6 +37,7 @@ public class SettingsStoreTests
             Assert.Equal(20, loaded.AnimationIntervalSeconds);
             Assert.True(loaded.ClickThrough);
             Assert.True(loaded.StartWithWindows);
+            Assert.True(loaded.RememberPlacePerApp);
         }
         finally
         {
@@ -56,6 +58,26 @@ public class SettingsStoreTests
         Assert.False(loaded.Pause);
         Assert.False(loaded.AnimateIdle);
         Assert.False(loaded.StartWithWindows);
+        Assert.False(loaded.RememberPlacePerApp);
+    }
+
+    [Fact]
+    public void Load_missing_remember_place_per_app_key_defaults_false()
+    {
+        var path = Path.Combine(Path.GetTempPath(), "pawlet-no-remember-" + Guid.NewGuid().ToString("N") + ".json");
+        try
+        {
+            File.WriteAllText(path, """{"scale":1.0,"clickThrough":true}""");
+            var loaded = SettingsStore.Load(path);
+            Assert.False(loaded.RememberPlacePerApp);
+        }
+        finally
+        {
+            if (File.Exists(path))
+            {
+                File.Delete(path);
+            }
+        }
     }
 
     [Fact]

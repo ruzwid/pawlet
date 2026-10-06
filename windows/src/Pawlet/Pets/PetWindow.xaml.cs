@@ -1,13 +1,28 @@
 using System.Diagnostics;
+using System.Runtime.InteropServices;
 using System.Windows;
+using System.Windows.Controls;
 using System.Windows.Input;
+using System.Windows.Interop;
+using System.Windows.Media.Animation;
 using System.Windows.Threading;
 using Pawlet.Core.Engine;
+using Pawlet.Core.Storage;
 
 namespace Pawlet.Pets;
 
 public partial class PetWindow : Window
 {
+    private const int GwlExStyle = -20;
+    private const int WsExNoActivate = 0x08000000;
+
+    private static readonly double[] SizeSteps =
+    [
+        0.25, 0.50, 0.75, 1.00, 1.25, 1.50, 1.75,
+    ];
+
+    private static readonly TimeSpan PlacementFadeDuration = TimeSpan.FromSeconds(0.15);
+
     private readonly AtlasSheet _atlas;
     private readonly AnimationEngine _engine = new();
     private readonly DispatcherTimer _timer;
@@ -19,6 +34,7 @@ public partial class PetWindow : Window
     private bool _moved;
     private bool _alive = true;
     private double _scale = 1.0;
+    private int _placementGeneration;
 
     public PetWindow(AtlasSheet atlas)
     {
@@ -60,10 +76,244 @@ public partial class PetWindow : Window
 
     public bool ClickThrough { get; set; }
 
+    public bool IsDragging => _dragging;
+
+    /// <summary>True while a placement fade is in flight.</summary>
+    public bool PlacementTransitionActive { get; private set; }
+
+    /// <summary>Invoked on drag end when the window actually moved (stamp app origin).</summary>
+    public Action? OnDragEnded { get; set; }
+
+    /// <summary>Invoked when a drag begins (pin monitor-local app key).</summary>
+    public Action? OnDragStarted { get; set; }
+
+    /// <summary>App key pinned at drag start for mid-drag Size/focus (cleared before drop stamp).</summary>
+    public string? DragPlacementAppKey { get; set; }
+
+    /// <summary>Effective scale for Size menu check marks.</summary>
+    public Func<double>? ResolveEffectiveScale { get; set; }
+
+    /// <summary>Size menu: set override, or null to clear (Use default size).</summary>
+    public Action<double?>? OnSetSizeOverride { get; set; }
+
     public double Scale
     {
         get => _scale;
         set => ApplyScale(value);
+    }
+
+    /// <summary>
+    /// Clamp a screen origin so the pet stays inside the preferred monitor work area.
+    /// </summary>
+    public static Point ClampOriginToWorkArea(double x, double y, double width, double height)
+    {
+        var work = PreferredWorkArea(x, y, width, height);
+        var (cx, cy) = PlacementGeometry.ClampOriginToWorkArea(
+            x, y, width, height, work.Left, work.Top, work.Right, work.Bottom);
+        return new Point(cx, cy);
+    }
+
+    /// <summary>
+    /// Work area for the monitor that best contains the frame (multi-monitor aware).
+    /// </summary>
+    public static (double Left, double Top, double Right, double Bottom) PreferredWorkArea(
+        double x, double y, double width, double height)
+    {
+        return PlacementGeometry.PreferredWorkArea(x, y, width, height, AllWorkAreas())
+            ?? (SystemParameters.WorkArea.Left, SystemParameters.WorkArea.Top,
+                SystemParameters.WorkArea.Right, SystemParameters.WorkArea.Bottom);
+    }
+
+    /// <summary>
+    /// Pixel→DIP scale from primary work area (same-DPI multi-monitor exact; mixed-DPI approximate).
+    /// </summary>
+    internal static (double ScaleX, double ScaleY) DipScaleFromPrimary()
+    {
+        var primaryDip = SystemParameters.WorkArea;
+        var screens = System.Windows.Forms.Screen.AllScreens;
+        var primaryPx = System.Windows.Forms.Screen.PrimaryScreen?.WorkingArea
+            ?? (screens.Length > 0 ? screens[0].WorkingArea : default);
+        var scaleX = primaryPx.Width > 0 ? primaryDip.Width / primaryPx.Width : 1.0;
+        var scaleY = primaryPx.Height > 0 ? primaryDip.Height / primaryPx.Height : 1.0;
+        return (scaleX, scaleY);
+    }
+
+    /// <summary>
+    /// All monitor work areas in WPF DIPs (same space as <see cref="Window.Left"/> / <see cref="Window.Top"/>).
+    /// Primary uses <see cref="SystemParameters.WorkArea"/>; others scale from WinForms pixels via primary.
+    /// </summary>
+    internal static (double Left, double Top, double Right, double Bottom)[] AllWorkAreas()
+    {
+        var primaryDip = SystemParameters.WorkArea;
+        var screens = System.Windows.Forms.Screen.AllScreens;
+        if (screens.Length == 0)
+        {
+            return [(primaryDip.Left, primaryDip.Top, primaryDip.Right, primaryDip.Bottom)];
+        }
+
+        var (scaleX, scaleY) = DipScaleFromPrimary();
+        var areas = new (double Left, double Top, double Right, double Bottom)[screens.Length];
+        for (var i = 0; i < screens.Length; i++)
+        {
+            if (screens[i].Primary)
+            {
+                areas[i] = (primaryDip.Left, primaryDip.Top, primaryDip.Right, primaryDip.Bottom);
+                continue;
+            }
+
+            var wa = screens[i].WorkingArea;
+            areas[i] = (wa.Left * scaleX, wa.Top * scaleY, wa.Right * scaleX, wa.Bottom * scaleY);
+        }
+
+        return areas;
+    }
+
+    /// <summary>
+    /// All monitor full bounds in WPF DIPs (for fullscreen cover checks / app picker monitor).
+    /// </summary>
+    internal static (double Left, double Top, double Right, double Bottom)[] AllMonitorBounds()
+    {
+        var screens = System.Windows.Forms.Screen.AllScreens;
+        if (screens.Length == 0)
+        {
+            // Fallback: primary work area as a stand-in when Forms reports no screens.
+            var wa = SystemParameters.WorkArea;
+            return [(wa.Left, wa.Top, wa.Right, wa.Bottom)];
+        }
+
+        var (scaleX, scaleY) = DipScaleFromPrimary();
+        var areas = new (double Left, double Top, double Right, double Bottom)[screens.Length];
+        for (var i = 0; i < screens.Length; i++)
+        {
+            var b = screens[i].Bounds;
+            areas[i] = (b.Left * scaleX, b.Top * scaleY, b.Right * scaleX, b.Bottom * scaleY);
+        }
+
+        return areas;
+    }
+
+    protected override void OnSourceInitialized(EventArgs e)
+    {
+        base.OnSourceInitialized(e);
+
+        // ShowActivated=false only covers the first Show; OR WS_EX_NOACTIVATE so
+        // click/drag/context menu do not steal foreground from the user's app.
+        var hwnd = new WindowInteropHelper(this).Handle;
+        var exStyle = GetWindowLongPtr(hwnd, GwlExStyle).ToInt64();
+        _ = SetWindowLongPtr(hwnd, GwlExStyle, (IntPtr)(exStyle | WsExNoActivate));
+    }
+
+    /// <summary>
+    /// Apply remembered origin/scale with a short opacity fade, or snap when client-area animations are off.
+    /// </summary>
+    public void ApplyRememberedPlacement(Point? origin, double? scale, double settingsOpacity)
+    {
+        var targetScale = scale is { } s
+            ? Math.Min(MotionConstants.MaxPetScale, Math.Max(MotionConstants.MinPetScale, s))
+            : _scale;
+        var width = AtlasSheet.CellWidth * targetScale;
+        var height = AtlasSheet.CellHeight * targetScale;
+
+        double? targetLeft = null;
+        double? targetTop = null;
+        if (origin is { } point)
+        {
+            // Keep a flush-edge stamp put when it still fits (same Cmd-Tab drift as Mac).
+            var work = PreferredWorkArea(point.X, point.Y, width, height);
+            if (PlacementGeometry.FrameFitsSafeArea(
+                    point.X, point.Y, width, height,
+                    work.Left, work.Top, work.Right, work.Bottom))
+            {
+                targetLeft = point.X;
+                targetTop = point.Y;
+            }
+            else
+            {
+                var clamped = ClampOriginToWorkArea(point.X, point.Y, width, height);
+                targetLeft = clamped.X;
+                targetTop = clamped.Y;
+            }
+        }
+
+        var originChanges = targetLeft is { } left
+            && targetTop is { } top
+            && (Math.Abs(Left - left) > 0.5 || Math.Abs(Top - top) > 0.5);
+        var scaleChanges = scale is not null && Math.Abs(_scale - targetScale) > 0.001;
+        if (!originChanges && !scaleChanges)
+        {
+            // Mid-fade geometry is not applied yet. Cancel so a stale target cannot land
+            // after a no-op switch (stay / same coords as pre-fade).
+            if (PlacementTransitionActive)
+            {
+                _placementGeneration++;
+                CancelPlacementAnimation();
+                Opacity = settingsOpacity;
+                PlacementTransitionActive = false;
+            }
+
+            return;
+        }
+
+        void ApplyGeometry()
+        {
+            if (targetLeft is { } left && targetTop is { } top)
+            {
+                Left = left;
+                Top = top;
+            }
+
+            if (scale is not null)
+            {
+                ApplyScale(targetScale);
+            }
+        }
+
+        // Never fade before first Show: window is not loaded/visible yet.
+        if (!SystemParameters.ClientAreaAnimation || !IsLoaded || !IsVisible)
+        {
+            CancelPlacementAnimation();
+            ApplyGeometry();
+            Opacity = settingsOpacity;
+            PlacementTransitionActive = false;
+            return;
+        }
+
+        var generation = ++_placementGeneration;
+        PlacementTransitionActive = true;
+        BeginAnimation(OpacityProperty, null);
+
+        var fadeOut = new DoubleAnimation(Opacity, 0, PlacementFadeDuration)
+        {
+            FillBehavior = FillBehavior.Stop,
+        };
+        fadeOut.Completed += (_, _) =>
+        {
+            if (!_alive || generation != _placementGeneration)
+            {
+                return;
+            }
+
+            Opacity = 0;
+            ApplyGeometry();
+
+            var fadeIn = new DoubleAnimation(0, settingsOpacity, PlacementFadeDuration)
+            {
+                FillBehavior = FillBehavior.Stop,
+            };
+            fadeIn.Completed += (_, _) =>
+            {
+                if (!_alive || generation != _placementGeneration)
+                {
+                    return;
+                }
+
+                BeginAnimation(OpacityProperty, null);
+                Opacity = settingsOpacity;
+                PlacementTransitionActive = false;
+            };
+            BeginAnimation(OpacityProperty, fadeIn);
+        };
+        BeginAnimation(OpacityProperty, fadeOut);
     }
 
     /// <summary>
@@ -78,10 +328,18 @@ public partial class PetWindow : Window
         }
 
         _alive = false;
+        _placementGeneration++;
+        CancelPlacementAnimation();
+        PlacementTransitionActive = false;
         _hitTest.Dispose();
         _timer.Stop();
         _timer.Tick -= OnTick;
         SpriteImage.Source = null;
+    }
+
+    private void CancelPlacementAnimation()
+    {
+        BeginAnimation(OpacityProperty, null);
     }
 
     private void ApplyScale(double scale)
@@ -91,6 +349,45 @@ public partial class PetWindow : Window
             Math.Max(MotionConstants.MinPetScale, scale));
         Width = AtlasSheet.CellWidth * _scale;
         Height = AtlasSheet.CellHeight * _scale;
+    }
+
+    private void OnContextMenuOpened(object sender, RoutedEventArgs e)
+    {
+        SizeMenuItem.Items.Clear();
+        var effective = ResolveEffectiveScale?.Invoke() ?? _scale;
+        var checkedPercent = (int)Math.Round(effective * 100);
+
+        foreach (var step in SizeSteps)
+        {
+            var percent = (int)Math.Round(step * 100);
+            var item = new MenuItem
+            {
+                Header = $"{percent}%",
+                IsCheckable = true,
+                IsChecked = percent == checkedPercent,
+                Tag = step,
+            };
+            item.Click += OnSizeStepClick;
+            SizeMenuItem.Items.Add(item);
+        }
+
+        SizeMenuItem.Items.Add(new Separator());
+        var useDefault = new MenuItem { Header = "Use default size" };
+        useDefault.Click += OnUseDefaultSizeClick;
+        SizeMenuItem.Items.Add(useDefault);
+    }
+
+    private void OnSizeStepClick(object sender, RoutedEventArgs e)
+    {
+        if (sender is MenuItem { Tag: double step })
+        {
+            OnSetSizeOverride?.Invoke(step);
+        }
+    }
+
+    private void OnUseDefaultSizeClick(object sender, RoutedEventArgs e)
+    {
+        OnSetSizeOverride?.Invoke(null);
     }
 
     private void OnTick(object? sender, EventArgs e)
@@ -151,6 +448,7 @@ public partial class PetWindow : Window
         _moved = false;
         _dragStart = PointToScreen(e.GetPosition(this));
         _dragOffset = e.GetPosition(this);
+        OnDragStarted?.Invoke();
         CaptureMouse();
         e.Handled = true;
     }
@@ -187,16 +485,45 @@ public partial class PetWindow : Window
             return;
         }
 
-        _dragging = false;
-        ReleaseMouseCapture();
-
-        if (!_moved && !Paused && !ClickThrough)
+        try
         {
-            var now = Stopwatch.GetTimestamp() / (double)Stopwatch.Frequency;
-            _engine.Greet(HoverReaction, now, Speed);
-            OnTick(null, EventArgs.Empty);
+            // Stamp while still dragging; PetRuntime clears the mid-drag pin before resolve.
+            if (_moved)
+            {
+                OnDragEnded?.Invoke();
+            }
+            else if (!Paused && !ClickThrough)
+            {
+                var now = Stopwatch.GetTimestamp() / (double)Stopwatch.Frequency;
+                _engine.Greet(HoverReaction, now, Speed);
+                OnTick(null, EventArgs.Empty);
+            }
+        }
+        finally
+        {
+            _dragging = false;
+            DragPlacementAppKey = null;
+            ReleaseMouseCapture();
         }
 
         e.Handled = true;
     }
+
+    [DllImport("user32.dll", EntryPoint = "GetWindowLong", SetLastError = true)]
+    private static extern IntPtr GetWindowLongPtr32(IntPtr hWnd, int nIndex);
+
+    [DllImport("user32.dll", EntryPoint = "GetWindowLongPtr", SetLastError = true)]
+    private static extern IntPtr GetWindowLongPtr64(IntPtr hWnd, int nIndex);
+
+    [DllImport("user32.dll", EntryPoint = "SetWindowLong", SetLastError = true)]
+    private static extern IntPtr SetWindowLongPtr32(IntPtr hWnd, int nIndex, IntPtr dwNewLong);
+
+    [DllImport("user32.dll", EntryPoint = "SetWindowLongPtr", SetLastError = true)]
+    private static extern IntPtr SetWindowLongPtr64(IntPtr hWnd, int nIndex, IntPtr dwNewLong);
+
+    private static IntPtr GetWindowLongPtr(IntPtr hWnd, int nIndex) =>
+        IntPtr.Size == 8 ? GetWindowLongPtr64(hWnd, nIndex) : GetWindowLongPtr32(hWnd, nIndex);
+
+    private static IntPtr SetWindowLongPtr(IntPtr hWnd, int nIndex, IntPtr dwNewLong) =>
+        IntPtr.Size == 8 ? SetWindowLongPtr64(hWnd, nIndex, dwNewLong) : SetWindowLongPtr32(hWnd, nIndex, dwNewLong);
 }
