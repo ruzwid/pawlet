@@ -97,14 +97,59 @@ public partial class PetWindow : Window
     }
 
     /// <summary>
-    /// Clamp a screen origin so the pet stays inside the primary work area.
+    /// Clamp a screen origin so the pet stays inside the preferred monitor work area.
     /// </summary>
     public static Point ClampOriginToWorkArea(double x, double y, double width, double height)
     {
-        var work = SystemParameters.WorkArea;
+        var work = PreferredWorkArea(x, y, width, height);
         var (cx, cy) = PlacementGeometry.ClampOriginToWorkArea(
             x, y, width, height, work.Left, work.Top, work.Right, work.Bottom);
         return new Point(cx, cy);
+    }
+
+    /// <summary>
+    /// Work area for the monitor that best contains the frame (multi-monitor aware).
+    /// </summary>
+    public static (double Left, double Top, double Right, double Bottom) PreferredWorkArea(
+        double x, double y, double width, double height)
+    {
+        return PlacementGeometry.PreferredWorkArea(x, y, width, height, AllWorkAreas())
+            ?? (SystemParameters.WorkArea.Left, SystemParameters.WorkArea.Top,
+                SystemParameters.WorkArea.Right, SystemParameters.WorkArea.Bottom);
+    }
+
+    /// <summary>
+    /// All monitor work areas in WPF DIPs (same space as <see cref="Window.Left"/> / <see cref="Window.Top"/>).
+    /// Primary uses <see cref="SystemParameters.WorkArea"/>; others scale from WinForms pixels via primary.
+    /// </summary>
+    internal static (double Left, double Top, double Right, double Bottom)[] AllWorkAreas()
+    {
+        var primaryDip = SystemParameters.WorkArea;
+        var screens = System.Windows.Forms.Screen.AllScreens;
+        if (screens.Length == 0)
+        {
+            return [(primaryDip.Left, primaryDip.Top, primaryDip.Right, primaryDip.Bottom)];
+        }
+
+        var primaryPx = System.Windows.Forms.Screen.PrimaryScreen?.WorkingArea ?? screens[0].WorkingArea;
+        // Same-DPI multi-monitor is exact; mixed-DPI secondary is approximate (preview ceiling).
+        var scaleX = primaryPx.Width > 0 ? primaryDip.Width / primaryPx.Width : 1.0;
+        var scaleY = primaryPx.Height > 0 ? primaryDip.Height / primaryPx.Height : 1.0;
+
+        var areas = new (double Left, double Top, double Right, double Bottom)[screens.Length];
+        for (var i = 0; i < screens.Length; i++)
+        {
+            if (screens[i].Primary)
+            {
+                areas[i] = (primaryDip.Left, primaryDip.Top, primaryDip.Right, primaryDip.Bottom);
+                continue;
+            }
+
+            var wa = screens[i].WorkingArea;
+            areas[i] = (wa.Left * scaleX, wa.Top * scaleY, wa.Right * scaleX, wa.Bottom * scaleY);
+        }
+
+        return areas;
     }
 
     protected override void OnSourceInitialized(EventArgs e)
@@ -134,7 +179,7 @@ public partial class PetWindow : Window
         if (origin is { } point)
         {
             // Keep a flush-edge stamp put when it still fits (same Cmd-Tab drift as Mac).
-            var work = SystemParameters.WorkArea;
+            var work = PreferredWorkArea(point.X, point.Y, width, height);
             if (PlacementGeometry.FrameFitsSafeArea(
                     point.X, point.Y, width, height,
                     work.Left, work.Top, work.Right, work.Bottom))

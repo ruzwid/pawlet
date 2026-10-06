@@ -71,4 +71,53 @@ public class PlacementGeometryTests
             x: 0, y: -8, width: 100, height: 80,
             workLeft: 0, workTop: 0, workRight: 800, workBottom: 600));
     }
+
+    [Fact]
+    public void PreferredWorkArea_picks_secondary_when_frame_lives_there()
+    {
+        var primary = (Left: 0d, Top: 0d, Right: 1920d, Bottom: 1080d);
+        var secondary = (Left: 1920d, Top: 0d, Right: 3840d, Bottom: 1080d);
+        var preferred = PlacementGeometry.PreferredWorkArea(
+            x: 2500, y: 100, width: 192, height: 208,
+            workAreas: [primary, secondary]);
+        Assert.Equal(secondary, preferred);
+    }
+
+    [Fact]
+    public void PreferredWorkArea_picks_primary_when_frame_lives_there()
+    {
+        var primary = (Left: 0d, Top: 0d, Right: 1920d, Bottom: 1080d);
+        var secondary = (Left: 1920d, Top: 0d, Right: 3840d, Bottom: 1080d);
+        var preferred = PlacementGeometry.PreferredWorkArea(
+            x: 40, y: 60, width: 192, height: 208,
+            workAreas: [primary, secondary]);
+        Assert.Equal(primary, preferred);
+    }
+
+    [Fact]
+    public void ClampOrigin_on_secondary_stays_on_secondary()
+    {
+        var primary = (Left: 0d, Top: 0d, Right: 1920d, Bottom: 1080d);
+        var secondary = (Left: 1920d, Top: 0d, Right: 3840d, Bottom: 1080d);
+        var work = PlacementGeometry.PreferredWorkArea(
+            x: 2500, y: 100, width: 192, height: 208,
+            workAreas: [primary, secondary])!.Value;
+        var (x, y) = PlacementGeometry.ClampOriginToWorkArea(
+            2500, 100, 192, 208, work.Left, work.Top, work.Right, work.Bottom);
+        Assert.Equal(2500, x);
+        Assert.Equal(100, y);
+        Assert.True(x >= secondary.Left);
+    }
+
+    [Fact]
+    public void PreferredWorkArea_when_disconnected_picks_nearest()
+    {
+        var primary = (Left: 0d, Top: 0d, Right: 1920d, Bottom: 1080d);
+        var secondary = (Left: 1920d, Top: 0d, Right: 3840d, Bottom: 1080d);
+        // Saved on a monitor that is gone (far right of old layout).
+        var preferred = PlacementGeometry.PreferredWorkArea(
+            x: 5000, y: 100, width: 192, height: 208,
+            workAreas: [primary, secondary]);
+        Assert.Equal(secondary, preferred);
+    }
 }
