@@ -377,9 +377,7 @@ public partial class PetWindow : Window
             return;
         }
 
-        _dragging = false;
-        ReleaseMouseCapture();
-
+        // Stamp while still dragging so PlacementStampKey keeps the drag pin.
         if (_moved)
         {
             OnDragEnded?.Invoke();
@@ -391,6 +389,8 @@ public partial class PetWindow : Window
             OnTick(null, EventArgs.Empty);
         }
 
+        _dragging = false;
+        ReleaseMouseCapture();
         e.Handled = true;
     }
 

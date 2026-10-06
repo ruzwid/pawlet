@@ -100,7 +100,13 @@ public sealed class PetRuntime : IDisposable
         var atlas = AtlasSheet.Load(atlasPath, manifest.SpriteVersion);
         var window = new PetWindow(atlas);
         var petId = manifest.Id;
-        window.OnDragEnded = () => SaveOrigin(petId, window.Left, window.Top, stampAppSlot: true);
+        window.OnDragEnded = () =>
+        {
+            // Stamp while PetWindow still reports IsDragging (drag pin).
+            SaveOrigin(petId, window.Left, window.Top, stampAppSlot: true);
+            // Reconcile after mouse-up clears _dragging (BeginInvoke runs next).
+            window.Dispatcher.BeginInvoke(ApplyAppPlacementToOpenWindows);
+        };
         window.ResolveEffectiveScale = () => ResolvedScaleForStamp(petId);
         window.OnSetSizeOverride = size => SetSizeOverride(petId, size);
         window.Closed += (_, _) =>
@@ -181,17 +187,17 @@ public sealed class PetRuntime : IDisposable
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
 
-        // Mid-drag Alt-Tab must not retarget the stamp key.
-        if (AnyWindowDragging)
-        {
-            return;
-        }
-
         _foregroundAppKey = PlacementStore.NormalizeAppKey(appKey);
         if (_selfExePath is not null
             && PlacementStore.IsTrackable(_foregroundAppKey, _selfExePath))
         {
             _lastTrackableAppKey = _foregroundAppKey;
+        }
+
+        // Skip apply while dragging; stamp pin uses lastTrackable. Reconcile on drag end.
+        if (AnyWindowDragging)
+        {
+            return;
         }
 
         ApplyAppPlacementToOpenWindows();
@@ -285,7 +291,8 @@ public sealed class PetRuntime : IDisposable
     }
 
     /// <summary>
-    /// Scale for pet context Size: falls back to last trackable when current is self/null.
+    /// Scale for pet context Size: trackable current → app size; drag pin → last
+    /// trackable; Library/self frontmost → pet-level size.
     /// </summary>
     public double ResolvedScaleForStamp(string petId)
     {
@@ -320,7 +327,7 @@ public sealed class PetRuntime : IDisposable
         && _selfExePath is not null
         && PlacementStore.IsTrackable(_foregroundAppKey, _selfExePath);
 
-    /// <summary>True when pet interaction can stamp/read a per-app slot (incl. last trackable).</summary>
+    /// <summary>True when pet interaction can stamp/read a per-app slot (trackable or drag-pinned).</summary>
     private bool UsesStampPlacement =>
         _settings.RememberPlacePerApp && StampAppKey is not null;
 

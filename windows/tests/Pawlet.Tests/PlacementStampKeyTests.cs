@@ -12,20 +12,23 @@ public class PlacementStampKeyTests
     public void Select_prefers_current_when_trackable()
     {
         Assert.Equal(Slack, PlacementStampKey.Select(Slack, Chrome, Self, isDragging: false));
+        // Trackable current wins even while dragging.
+        Assert.Equal(Chrome, PlacementStampKey.Select(Chrome, Slack, Self, isDragging: true));
     }
 
     [Fact]
-    public void Select_falls_back_to_last_trackable_when_current_is_self_or_null()
+    public void Select_returns_null_when_library_frontmost_and_not_dragging()
     {
-        Assert.Equal(Slack, PlacementStampKey.Select(Self, Slack, Self, isDragging: false));
-        Assert.Equal(Slack, PlacementStampKey.Select(null, Slack, Self, isDragging: false));
+        Assert.Null(PlacementStampKey.Select(Self, Slack, Self, isDragging: false));
+        Assert.Null(PlacementStampKey.Select(null, Slack, Self, isDragging: false));
     }
 
     [Fact]
-    public void Select_pins_last_trackable_while_dragging()
+    public void Select_pins_last_trackable_while_dragging_and_current_untrackable()
     {
-        Assert.Equal(Slack, PlacementStampKey.Select(Chrome, Slack, Self, isDragging: true));
-        Assert.Null(PlacementStampKey.Select(Chrome, null, Self, isDragging: true));
+        Assert.Equal(Slack, PlacementStampKey.Select(Self, Slack, Self, isDragging: true));
+        Assert.Equal(Slack, PlacementStampKey.Select(null, Slack, Self, isDragging: true));
+        Assert.Null(PlacementStampKey.Select(Self, null, Self, isDragging: true));
     }
 
     [Fact]
