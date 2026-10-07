@@ -14,6 +14,10 @@ jobs:
     runs-on: ${{ matrix.runner }}
     steps:
       - uses: actions/checkout@v7
+      - name: Check engine timings contract
+        run: python3 scripts/check-engine-timings.py
+      - name: Check design tokens contract
+        run: python3 scripts/check-tokens.py
       - name: Build universal app
         run: bash scripts/build.sh
       - name: Packaging test dependencies

@@ -3,6 +3,7 @@ using System.ComponentModel;
 using System.IO;
 using System.Text.Json;
 using System.Windows;
+using System.Windows.Media;
 using Microsoft.Win32;
 using Pawlet.Core.Engine;
 using Pawlet.Core.Packs;
@@ -63,10 +64,26 @@ public partial class LibraryWindow : Window
 
     public void RefreshPets()
     {
+        var selectedDir = (PetList.SelectedItem as PetRow)?.Directory;
         _rows.Clear();
         foreach (var dir in EnumeratePets(LibraryPaths.DefaultRoot))
         {
             _rows.Add(CreateRow(dir));
+        }
+
+        MiniCountText.Text = _rows.Count.ToString();
+        var empty = _rows.Count == 0;
+        EmptyState.Visibility = empty ? Visibility.Visible : Visibility.Collapsed;
+        PetList.Visibility = empty ? Visibility.Collapsed : Visibility.Visible;
+        if (empty || selectedDir is null)
+        {
+            return;
+        }
+
+        var match = _rows.FirstOrDefault(row => row.Directory == selectedDir);
+        if (match is not null)
+        {
+            PetList.SelectedItem = match;
         }
     }
 
@@ -147,6 +164,7 @@ public partial class LibraryWindow : Window
     {
         var id = Path.GetFileName(dir);
         var name = id;
+        var spriteVersion = 1;
         var manifestPath = Path.Combine(dir, "manifest.json");
         try
         {
@@ -162,6 +180,11 @@ public partial class LibraryWindow : Window
                 {
                     id = manifest.Id;
                 }
+
+                if (manifest.SpriteVersion is 1 or 2)
+                {
+                    spriteVersion = manifest.SpriteVersion;
+                }
             }
         }
         catch (JsonException)
@@ -174,7 +197,26 @@ public partial class LibraryWindow : Window
         }
 
         var open = _runtime.IsOpen(dir);
-        return new PetRow(dir, name, id, open ? "Hide" : "Show");
+        return new PetRow(
+            dir,
+            name,
+            id,
+            open ? "Hide" : "Show",
+            open,
+            LoadIdlePreview(dir, spriteVersion));
+    }
+
+    private static ImageSource? LoadIdlePreview(string dir, int spriteVersion)
+    {
+        try
+        {
+            using var atlas = AtlasSheet.Load(Path.Combine(dir, "spritesheet.png"), spriteVersion);
+            return atlas.Frame(new SpriteFrame(0, 0));
+        }
+        catch (Exception)
+        {
+            return null;
+        }
     }
 
     private static IEnumerable<string> EnumeratePets(string libraryRoot)
@@ -200,7 +242,13 @@ public partial class LibraryWindow : Window
         }
     }
 
-    private sealed record PetRow(string Directory, string Name, string Id, string ActionLabel);
+    private sealed record PetRow(
+        string Directory,
+        string Name,
+        string Id,
+        string ActionLabel,
+        bool IsVisible,
+        ImageSource? IdlePreview);
 
     private sealed record ReactionChoice(HoverReaction Value, string Title);
 }
