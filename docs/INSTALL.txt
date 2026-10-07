@@ -1,4 +1,4 @@
-Pawlet 0.6.8 — macOS 13 or later
+Pawlet — macOS 13 or later, Apple silicon and Intel
 
 Drag Pawlet.app to Applications, then open it from Applications.
 The paw in the menu bar opens your library and settings.
@@ -14,9 +14,18 @@ Settings lets you adjust the interval, disable greetings, or shrink minis to 25%
 Minis folder opens the whole library in Finder; Share exports a pack, ZIP or Codex folder.
 Create opens a prepared Codex prompt; Codex is optional for running existing minis.
 
-Preview builds are ad-hoc signed and not Apple-notarized. A downloaded preview
-may need approval in System Settings → Privacy & Security. Only approve a build
-you trust. Public releases should be Developer ID signed and notarized.
+No Git, Xcode, npm, Python or Codex is needed to install or run this download.
+
+This build is ad-hoc signed and not notarized by Apple. macOS may block it on
+first launch because the developer cannot be verified. If you trust the download:
+1. Move Pawlet.app to Applications and try opening it once.
+2. Open System Settings → Privacy & Security.
+3. Scroll to the Pawlet message, click Open Anyway, then confirm Open.
+Apple's instructions: https://support.apple.com/en-us/102445
+Managed Macs may prevent this exception.
+
+To update, quit Pawlet and replace the app in Applications with the new download.
+Your minis and settings stay in your user library.
 
 Source and contribution instructions are in the Pawlet source repository.
 This is an independent app, not an official OpenAI product.

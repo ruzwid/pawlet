@@ -8,21 +8,15 @@ Pawlet is a native SwiftUI + AppKit app. It runs independently of Codex, has a m
 
 ## Install and use
 
-The current setup is to clone the repository and build locally. You do **not** need a paid Apple Developer account, signing credentials, Codex, Python or an API key to run Pawlet. Requires macOS 13+ and Xcode or its command-line tools:
+**[Download Pawlet for Mac](https://github.com/ruzwid/pawlet/releases/latest)** — requires macOS 13 or later. One download works on Apple silicon and Intel Macs. You do **not** need Git, Xcode, npm, a paid Apple Developer account, Codex, Python or an API key to run it.
 
-```sh
-# Only if Xcode's command-line tools are not installed:
-xcode-select --install
+1. Download the **Pawlet DMG** under the release's **Assets** (the ZIP also works). GitHub's **Source code** downloads are for developers.
+2. Open the DMG and drag **Pawlet.app** to **Applications**. If using the ZIP, expand it and move the app to Applications.
+3. Open Pawlet from Applications.
 
-git clone https://github.com/ruzwid/pawlet.git
-cd pawlet
-bash scripts/build.sh
-open build/Pawlet.app
-```
+These downloads are ad-hoc signed and **not notarized by Apple**. macOS may block the first launch because the developer cannot be verified. If you trust the download, try opening Pawlet once, then go to **System Settings → Privacy & Security → Open Anyway** and confirm **Open**. See [Apple's instructions](https://support.apple.com/en-us/102445). Managed Macs may prevent this exception. Developer ID signing and notarization will follow when an Apple Developer Program membership is available.
 
-The runnable app is **`build/Pawlet.app`** inside your checkout. You can drag it into Applications. Builds support Apple silicon and Intel by default. To update a checkout, quit Pawlet, run `git pull --ff-only`, rebuild, and open the rebuilt app.
-
-The 0.7.0 preview is ad-hoc signed. Developer ID signing and Apple notarization are deferred; no App Store distribution is planned. Downloadable DMG/ZIP previews can be built with `bash scripts/release.sh` or the **Build downloadable preview** GitHub Actions workflow. Until a [GitHub Release](https://github.com/ruzwid/pawlet/releases) is published, cloning and building is the primary installation path. Downloaded previews may need approval in System Settings → Privacy & Security. See [distribution](docs/distribution.md).
+To update, quit Pawlet and replace the app in Applications with the new download. Your minis and preferences stay in your user library. For source builds and release automation, see [Build and contribute](#build-and-contribute) and [distribution](docs/distribution.md).
 
 The first launch opens **Your minis**. The compact sidebar keeps Minis, Settings and About close at hand. Use **Import** to select one or more `.petpack` files, mini ZIPs, Codex mini folders, `pet.json` files, or complete compatible PNG atlases. Valid minis are added even if another selection fails; one summary identifies any failed or duplicate imports. Use **Export** beside Import to search, select several minis and save one ZIP. Select all or just the search results; selections remain when searching. The ZIP contains a folder per mini with `manifest.json`, `pet.json` and the exact `spritesheet.png`, so it can be imported directly into Pawlet or extracted for Codex. Existing minis are skipped with a summary when importing a collection. Use **Share** for a single pack, ordinary ZIP, or Codex folder; **Minis folder** in the top toolbar opens the whole library in Finder. To inspect one mini, choose **Options → Show this mini’s files**. Exported files are revealed in Finder too. Double-clicking a `.petpack` also imports it. Hover over a mini for a brief hello, click to wave, double-click to jump, drag to move it, or right-click for its other poses. The paw in the menu bar lets you reopen the library, show/hide minis, pause, or quit. Closing the library keeps the minis running.
 
@@ -95,6 +89,9 @@ The helper validates structure and preserves the original PNG bytes. Visual qual
 Install Xcode or its command-line tools, then:
 
 ```sh
+xcode-select --install # Only if the command-line tools are not installed
+git clone https://github.com/ruzwid/pawlet.git
+cd pawlet
 bash scripts/build.sh
 open build/Pawlet.app
 
@@ -106,11 +103,11 @@ PYTHON=.venv/bin/python bash scripts/test.sh --ui
 
 The build has no downloaded Swift dependencies. By default it compiles a universal binary; use `ARCHS=arm64` or `ARCHS=x86_64` for a faster local build. Python/Pillow are needed only for the pack helper and its tests, never for the app at runtime. Use `bash scripts/release.sh` to create a DMG, app ZIP and SHA-256 checksums in `dist/`.
 
-Read [CONTRIBUTING.md](CONTRIBUTING.md) and the [architecture](docs/architecture.md). GitHub Actions checks both Mac architectures; manual release builds are uploaded as workflow artifacts and do not publish a release automatically. All local user data stays in `~/Library/Application Support/Pawlet/`. No accounts, telemetry, server, API key or accessibility/screen-recording permission is needed to run pets.
+Read [CONTRIBUTING.md](CONTRIBUTING.md) and the [architecture](docs/architecture.md). GitHub Actions checks both Mac architectures. Pushing a version tag such as `v0.7.0` runs **Publish Mac download**, which builds, tests and publishes a GitHub Release with the DMG, app ZIP and checksums. **Build downloadable preview** remains available for unpublished review artifacts. See [distribution](docs/distribution.md) for the release steps. All local user data stays in `~/Library/Application Support/Pawlet/`. No accounts, telemetry, server, API key or accessibility/screen-recording permission is needed to run pets.
 
 ## Next milestones
 
-- Sign and notarize the public release; publish versioned GitHub downloads.
+- Add Developer ID signing and Apple notarization to the downloadable releases.
 - Add library search, tags and per-pet setting overrides when the library grows.
 - Add a curated gallery of downloadable packs with attribution and explicit licenses.
 - Add opt-in automatic updates after a trusted release channel exists.

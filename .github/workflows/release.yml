@@ -1,0 +1,72 @@
+name: Publish Mac download
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Existing version tag to release (for example v0.7.0)'
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: mac-release-${{ inputs.tag || github.ref_name }}
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on: macos-15
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: refs/tags/${{ inputs.tag || github.ref_name }}
+          persist-credentials: false
+      - name: Check release version
+        env:
+          RELEASE_TAG: ${{ inputs.tag || github.ref_name }}
+        run: |
+          set -euo pipefail
+          version=$(/usr/libexec/PlistBuddy -c 'Print CFBundleShortVersionString' Resources/Info.plist)
+          if [[ "$RELEASE_TAG" != "v$version" ]]; then
+            echo "::error::Tag must match the app version: v$version"
+            exit 1
+          fi
+      - name: Build and package universal app
+        run: bash scripts/release.sh
+      - name: Packaging test dependencies
+        run: |
+          python3 -m venv .venv
+          .venv/bin/python -m pip install -r requirements-dev.txt
+      - name: Verify behavior and pet packs
+        run: PYTHON=.venv/bin/python bash scripts/test.sh
+      - uses: actions/upload-artifact@v7
+        with:
+          name: Pawlet-Mac-${{ inputs.tag || github.ref_name }}
+          path: dist/*
+          if-no-files-found: error
+      - name: Publish GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          RELEASE_TAG: ${{ inputs.tag || github.ref_name }}
+        run: |
+          set -euo pipefail
+          if gh release view "$RELEASE_TAG" --json isDraft > release-status.json; then
+            if [[ "$(python3 -c 'import json; print(json.load(open("release-status.json"))["isDraft"])')" != True ]]; then
+              echo "::error::This version is already published; choose a new version."
+              exit 1
+            fi
+            gh release upload "$RELEASE_TAG" dist/*.dmg dist/*.zip dist/SHA256SUMS.txt --clobber
+            gh release edit "$RELEASE_TAG" --notes-file docs/release-notes.md
+          else
+            gh release create "$RELEASE_TAG" dist/*.dmg dist/*.zip dist/SHA256SUMS.txt \
+              --verify-tag --draft --title "Pawlet ${RELEASE_TAG#v}" \
+              --notes-file docs/release-notes.md
+          fi
+          gh release edit "$RELEASE_TAG" --draft=false --latest

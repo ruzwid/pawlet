@@ -10,9 +10,10 @@ task_version=$(/usr/libexec/PlistBuddy -c 'Print CFBundleShortVersionString' "$t
 if [[ -n "${NOTARY_PROFILE:-}" && -z "${SIGN_IDENTITY:-}" ]]; then
     printf 'NOTARY_PROFILE requires a Developer ID SIGN_IDENTITY.\n' >&2; exit 1
 fi
-BUILD_OUTPUT="$task_output" bash "$task_root/scripts/build.sh"
+ARCHS='arm64 x86_64' BUILD_OUTPUT="$task_output" bash "$task_root/scripts/build.sh"
 "$task_app/Contents/MacOS/Pawlet" --self-test
 codesign --verify --deep --strict "$task_app"
+xcrun lipo "$task_app/Contents/MacOS/Pawlet" -verify_arch arm64 x86_64
 if [[ -n "${NOTARY_PROFILE:-}" ]]; then
     ditto -c -k --sequesterRsrc --keepParent "$task_app" "$task_temporary/notarize.zip"
     xcrun notarytool submit "$task_temporary/notarize.zip" --keychain-profile "$NOTARY_PROFILE" --wait
@@ -23,7 +24,10 @@ mkdir -p "$task_dist" "$task_temporary/image"
 ditto "$task_app" "$task_temporary/image/Pawlet.app"
 ln -s /Applications "$task_temporary/image/Applications"
 cp "$task_root/docs/INSTALL.txt" "$task_temporary/image/Read Me.txt"
-ditto -c -k --sequesterRsrc --keepParent "$task_app" "$task_dist/Pawlet-$task_version-Mac.zip"
+mkdir -p "$task_temporary/zip"
+ditto "$task_app" "$task_temporary/zip/Pawlet.app"
+cp "$task_root/docs/INSTALL.txt" "$task_temporary/zip/Read Me.txt"
+ditto -c -k --sequesterRsrc "$task_temporary/zip" "$task_dist/Pawlet-$task_version-Mac.zip"
 hdiutil create -volname 'Pawlet' -srcfolder "$task_temporary/image" -ov -format UDZO "$task_dist/Pawlet-$task_version-Mac.dmg"
 if [[ -n "${SIGN_IDENTITY:-}" ]]; then codesign --force --sign "$SIGN_IDENTITY" --timestamp "$task_dist/Pawlet-$task_version-Mac.dmg"; fi
 (
