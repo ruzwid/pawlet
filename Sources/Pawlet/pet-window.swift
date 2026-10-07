@@ -36,6 +36,7 @@ final class DesktopPet: NSObject {
     private var lastMouse = NSPoint.zero
     private var dragged = false
     private var dragging = false
+    private var dragPlacementAppBundleID: String?
     private var dragState: PetState?
     private var lastPointer = NSPoint.zero
     private var pointerActiveUntil: Double = 0
@@ -43,7 +44,10 @@ final class DesktopPet: NSObject {
     private var wanderTarget: CGFloat?
     private var lastTick: Double = ProcessInfo.processInfo.systemUptime
     private var hoverGreeting = HoverGreeting()
+    private var placementTransition: UUID?
     var visible: Bool { panel.isVisible }
+    var isDragging: Bool { dragging }
+    var panelFrame: NSRect { panel.frame }
 
     init(atlas: SpriteAtlas, owner: AppDelegate, index: Int) {
         self.atlas = atlas
@@ -65,7 +69,7 @@ final class DesktopPet: NSObject {
         view.setAccessibilityElement(true)
         view.setAccessibilityRole(.button)
         view.setAccessibilityLabel("\(atlas.name), desktop companion")
-        view.setAccessibilityHelp("Hover to greet. Click to wave. Double-click to jump. Drag to move. Right-click for animations.")
+        view.setAccessibilityHelp("Hover to greet. Click to wave. Double-click to jump. Drag to move. Right-click for animations and size.")
         view.sprite = atlas.frame(SpriteFrame(row: 0, column: 0))
         let d = owner.defaults
         if d.object(forKey: "pet.\(atlas.id).x") != nil {
@@ -76,14 +80,23 @@ final class DesktopPet: NSObject {
 
     func applyOptions() {
         guard let owner = owner else { return }
-        panel.level = owner.settings.alwaysOnTop ? .floating : .normal
-        panel.ignoresMouseEvents = owner.settings.clickThrough
-        panel.alphaValue = CGFloat(owner.settings.opacity)
-        panel.collectionBehavior = owner.settings.allSpaces ? [.canJoinAllSpaces, .fullScreenAuxiliary, .stationary] : [.fullScreenAuxiliary, .stationary]
+        applyPanelChrome()
         let origin = panel.frame.origin
         let scale = CGFloat(owner.miniSize(for: atlas.id))
         panel.setFrame(NSRect(x: origin.x, y: origin.y, width: 192 * scale, height: 208 * scale), display: true)
         clampToScreen()
+    }
+
+    private func applyPanelChrome() {
+        guard let owner = owner else { return }
+        panel.level = owner.settings.alwaysOnTop ? .floating : .normal
+        panel.ignoresMouseEvents = owner.settings.clickThrough
+        if placementTransition == nil {
+            panel.alphaValue = CGFloat(owner.settings.opacity)
+        }
+        panel.collectionBehavior = owner.settings.allSpaces
+            ? [.canJoinAllSpaces, .fullScreenAuxiliary, .stationary]
+            : [.fullScreenAuxiliary, .stationary]
     }
 
     func setVisible(_ show: Bool) {
@@ -95,31 +108,97 @@ final class DesktopPet: NSObject {
         let f = screen.visibleFrame
         panel.setFrameOrigin(NSPoint(x: f.maxX - CGFloat(index + 1) * 200 - 24, y: f.minY + 18))
         clampToScreen()
-        savePosition()
+        savePosition(stampAppSlot: true)
     }
 
     func clampToScreen() {
         let frame = panel.frame
-        let screen = NSScreen.screens.max(by: { intersectionArea($0.visibleFrame, frame) < intersectionArea($1.visibleFrame, frame) }) ?? NSScreen.main
-        guard let screen = screen else { return }
-        let safe = screen.visibleFrame
-        let point = NSPoint(x: min(max(frame.minX, safe.minX), max(safe.minX, safe.maxX - frame.width)),
-                            y: min(max(frame.minY, safe.minY), max(safe.minY, safe.maxY - frame.height)))
+        guard let safe = preferredSafeFrame(for: frame) else { return }
+        let point = AppPlacement.clampedOrigin(origin: frame.origin, size: frame.size, safe: safe)
         panel.setFrameOrigin(point)
     }
 
-    private func intersectionArea(_ a: NSRect, _ b: NSRect) -> CGFloat {
-        let i = a.intersection(b)
-        return i.isNull ? 0 : i.width * i.height
+    /// Clamps only when the frame sits meaningfully outside the safe area.
+    /// Avoids walking a flush-top mini down on every per-app restore (float / edge noise).
+    private func clampToScreenIfNeeded() {
+        let frame = panel.frame
+        guard let safe = preferredSafeFrame(for: frame) else { return }
+        if AppPlacement.frameFitsSafeArea(frame, safe: safe) { return }
+        let point = AppPlacement.clampedOrigin(origin: frame.origin, size: frame.size, safe: safe)
+        panel.setFrameOrigin(point)
     }
 
-    func savePosition() {
-        owner?.defaults.set(panel.frame.minX, forKey: "pet.\(atlas.id).x")
-        owner?.defaults.set(panel.frame.minY, forKey: "pet.\(atlas.id).y")
+    private func preferredSafeFrame(for frame: NSRect) -> NSRect? {
+        let candidates = NSScreen.screens.map(\.visibleFrame)
+        return AppPlacement.preferredSafeFrame(for: frame, candidates: candidates)
+            ?? NSScreen.main?.visibleFrame
+    }
+
+    func applyRememberedPlacement(bundleID: String, animated: Bool = true) {
+        guard let owner = owner else { return }
+        let origin = AppPlacement.rememberedOrigin(defaults: owner.defaults, petID: atlas.id, bundleID: bundleID)
+        let targetWidth = CGFloat(owner.miniSize(for: atlas.id)) * 192
+        let originMoved = origin.map { hypot($0.x - panel.frame.minX, $0.y - panel.frame.minY) > 0.5 } ?? false
+        let sizeChanged = abs(panel.frame.width - targetWidth) > 0.5
+        let shouldAnimate = animated && !NSWorkspace.shared.accessibilityDisplayShouldReduceMotion && (originMoved || sizeChanged)
+        guard shouldAnimate else {
+            placementTransition = nil
+            applyRememberedPlacementNow(origin: origin)
+            return
+        }
+        let token = UUID()
+        placementTransition = token
+        let targetAlpha = CGFloat(owner.settings.opacity)
+        NSAnimationContext.runAnimationGroup({ context in
+            context.duration = 0.12
+            panel.animator().alphaValue = 0
+        }, completionHandler: { [weak self] in
+            guard let self, self.placementTransition == token else { return }
+            self.applyRememberedPlacementNow(origin: origin)
+            self.panel.alphaValue = 0
+            NSAnimationContext.runAnimationGroup({ context in
+                context.duration = 0.15
+                self.panel.animator().alphaValue = targetAlpha
+            }, completionHandler: { [weak self] in
+                guard let self, self.placementTransition == token else { return }
+                self.placementTransition = nil
+                self.panel.alphaValue = targetAlpha
+            })
+        })
+    }
+
+    private func applyRememberedPlacementNow(origin: NSPoint?) {
+        guard let owner = owner else { return }
+        applyPanelChrome()
+        let scale = CGFloat(owner.miniSize(for: atlas.id))
+        let size = NSSize(width: 192 * scale, height: 208 * scale)
+        if let origin {
+            wanderTarget = nil
+            // Size + origin in one setFrame, then clamp only if outside. Always clamping
+            // after restore walked flush-top minis down a few points on each Cmd-Tab.
+            panel.setFrame(NSRect(origin: origin, size: size), display: true)
+            clampToScreenIfNeeded()
+        } else {
+            panel.setFrame(NSRect(origin: panel.frame.origin, size: size), display: true)
+            clampToScreen()
+        }
+    }
+
+    /// Global origin always. Per-app origin only when `stampAppSlot` (user drag or reset), never wander/sleep/hide.
+    func savePosition(stampAppSlot: Bool = false) {
+        guard let owner = owner else { return }
+        let origin = NSPoint(x: panel.frame.minX, y: panel.frame.minY)
+        AppPlacement.writeGlobalOrigin(defaults: owner.defaults, petID: atlas.id, origin: origin)
+        guard stampAppSlot, owner.settings.rememberPlacePerApp else { return }
+        let appBundleID = dragPlacementAppBundleID ?? owner.placementAppBundleID(forPetFrame: panel.frame)
+        guard let appBundleID else { return }
+        AppPlacement.writeAppOrigin(defaults: owner.defaults, petID: atlas.id, origin: origin,
+            bundleID: appBundleID, selfBundleID: Bundle.main.bundleIdentifier)
     }
 
     func beginDrag(_ event: NSEvent) {
         dragging = true; dragged = false; wanderTarget = nil
+        dragPlacementAppBundleID = owner?.placementAppBundleID(forPetFrame: panel.frame)
         let mouse = NSEvent.mouseLocation
         grab = NSPoint(x: mouse.x - panel.frame.minX, y: mouse.y - panel.frame.minY)
         dragStart = mouse; lastMouse = mouse
@@ -138,8 +217,16 @@ final class DesktopPet: NSObject {
 
     func endDrag(_ event: NSEvent) {
         dragging = false; dragState = nil
-        if dragged { clampToScreen(); savePosition(); engine.perform(.idle, now: ProcessInfo.processInfo.systemUptime, seconds: 0.25) }
-        else if owner?.settings.animateInteractions == true { perform(event.clickCount >= 2 ? .jumping : .waving) }
+        if dragged {
+            clampToScreen()
+            // Drop stamp must use the destination monitor's top app, not the mid-drag pin.
+            dragPlacementAppBundleID = nil
+            savePosition(stampAppSlot: true)
+            engine.perform(.idle, now: ProcessInfo.processInfo.systemUptime, seconds: 0.25)
+        } else if owner?.settings.animateInteractions == true {
+            perform(event.clickCount >= 2 ? .jumping : .waving)
+        }
+        dragPlacementAppBundleID = nil
     }
 
     func perform(_ state: PetState, seconds: Double? = nil) {
@@ -208,6 +295,25 @@ final class DesktopPet: NSObject {
             menu.addItem(item)
         }
         menu.addItem(.separator())
+        let sizeMenu = NSMenu(title: "Size")
+        let percent = Int(((owner?.miniSize(for: atlas.id) ?? 1) * 100).rounded())
+        let steps: [Double] = [0.25, 0.5, 0.75, 1, 1.25, 1.5, 1.75]
+        for step in steps {
+            let title = "\(Int((step * 100).rounded()))%"
+            let item = NSMenuItem(title: title, action: #selector(sizeAction(_:)), keyEquivalent: "")
+            item.target = self
+            item.representedObject = step
+            item.state = percent == Int((step * 100).rounded()) ? .on : .off
+            sizeMenu.addItem(item)
+        }
+        sizeMenu.addItem(.separator())
+        let reset = NSMenuItem(title: "Clear saved size", action: #selector(resetSizeAction), keyEquivalent: "")
+        reset.target = self
+        sizeMenu.addItem(reset)
+        let sizeItem = NSMenuItem(title: "Size", action: nil, keyEquivalent: "")
+        sizeItem.submenu = sizeMenu
+        menu.addItem(sizeItem)
+        menu.addItem(.separator())
         let settings = NSMenuItem(title: "Mini controls…", action: #selector(AppDelegate.showControls), keyEquivalent: "")
         settings.target = owner; menu.addItem(settings)
         let hide = NSMenuItem(title: "Hide \(atlas.name)", action: #selector(hidePet), keyEquivalent: "")
@@ -219,5 +325,10 @@ final class DesktopPet: NSObject {
         guard let raw = sender.representedObject as? String, let state = PetState(rawValue: raw) else { return }
         perform(state)
     }
+    @objc private func sizeAction(_ sender: NSMenuItem) {
+        guard let size = sender.representedObject as? Double else { return }
+        owner?.setSizeOverride(size, for: atlas.id)
+    }
+    @objc private func resetSizeAction() { owner?.setSizeOverride(nil, for: atlas.id) }
     @objc private func hidePet() { owner?.setPetVisible(atlas.id, show: false) }
 }

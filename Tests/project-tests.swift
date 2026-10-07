@@ -82,7 +82,7 @@ enum ProjectTests {
         var disabledGreeting = HoverGreeting()
         try require(!disabledGreeting.shouldGreet(isHovering: true, isEnabled: false, isBlocked: false), "Disabled hover must stay still")
         let previousSettings = try JSONDecoder().decode(AppSettings.self, from: Data(#"{"animateIdle":true,"size":1.25,"followCursor":false}"#.utf8))
-        try require(previousSettings.animateIdle && previousSettings.size == 1.25 && previousSettings.animationInterval == 10 && previousSettings.greetOnHover, "Settings upgrade must preserve prior choices and add new defaults")
+        try require(previousSettings.animateIdle && previousSettings.size == 1.25 && previousSettings.animationInterval == 10 && previousSettings.greetOnHover && !previousSettings.rememberPlacePerApp, "Settings upgrade must preserve prior choices and add new defaults")
         let smallSettings = try JSONDecoder().decode(AppSettings.self, from: Data(#"{"size":0.25}"#.utf8))
         try require(smallSettings.size == 0.25, "25 percent size must survive persistence")
         let outOfRangeSettings = try JSONDecoder().decode(AppSettings.self, from: Data(#"{"size":0.1}"#.utf8))
@@ -133,6 +133,7 @@ enum ProjectTests {
         try require(handoff.prompt.contains("Use the requested visual style: plush"), "Explicit style must be preserved")
         try MiniCollectionTests.run(sample: original, scratch: scratch)
         try MiniCustomizationTests.run(sample: original, scratch: scratch)
+        try AppPlacementTests.run()
         try TransferTests.run(sample: original, scratch: scratch)
         try AtlasCompatibilityTests.run(sample: original, scratch: scratch)
         try InteractionPreviewTests.run(sample: original)
@@ -141,7 +142,7 @@ enum ProjectTests {
             "pause and reduced motion", "pet-pack roundtrip preserves bytes", "arbitrary third pet", "rename persistence",
             "duplicate import rejected", "path traversal rejected", "truncated archive rejected", "schema validation",
             "dynamic command targets", "Codex prompt encoding", "creation skill bundled", "idle and activity rest intervals",
-            "zero interval and playback speed", "immediate hover re-entry", "blocked and disabled hover", "settings upgrade", "25 percent size persistence", "automatic and explicit artwork styles", "Codex folder and ZIP imports", "Codex export roundtrip", "unsafe Codex transfers rejected", "Finder ZIP metadata ignored", "unused frames ignored without changing bytes", "missing required frames rejected", "all hover reactions restore idle", "hover reaction persistence", "preview looping and speed", "v1 and v2 preview choices", "frame stepping and reduced motion", "distinct artwork selection switches", "shared preview crop preserves pose registration", "Paris and Mochi defaults", "removed defaults stay removed", "batch import continues after failures", "per-mini size persistence and fallback", "bulk ZIP roundtrip preserves artwork and metadata", "Codex-compatible bulk folders", "partial and duplicate collection imports", "unsafe and encrypted collections rejected", "failed exports preserve destination"]]
+            "zero interval and playback speed", "immediate hover re-entry", "blocked and disabled hover", "settings upgrade", "25 percent size persistence", "automatic and explicit artwork styles", "Codex folder and ZIP imports", "Codex export roundtrip", "unsafe Codex transfers rejected", "Finder ZIP metadata ignored", "unused frames ignored without changing bytes", "missing required frames rejected", "all hover reactions restore idle", "hover reaction persistence", "preview looping and speed", "v1 and v2 preview choices", "frame stepping and reduced motion", "distinct artwork selection switches", "shared preview crop preserves pose registration", "Paris and Mochi defaults", "removed defaults stay removed", "batch import continues after failures", "per-mini size persistence and fallback", "bulk ZIP roundtrip preserves artwork and metadata", "Codex-compatible bulk folders", "partial and duplicate collection imports", "unsafe and encrypted collections rejected", "failed exports preserve destination", "per-app origin and size keys"]]
         print(String(data: try JSONSerialization.data(withJSONObject: report, options: [.prettyPrinted, .sortedKeys]), encoding: .utf8)!)
     }
 }
