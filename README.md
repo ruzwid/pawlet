@@ -105,6 +105,30 @@ The build has no downloaded Swift dependencies. By default it compiles a univers
 
 Read [CONTRIBUTING.md](CONTRIBUTING.md) and the [architecture](docs/architecture.md). GitHub Actions checks both Mac architectures. Pushing a version tag such as `v0.7.0` runs **Publish Mac download**, which builds, tests and publishes a GitHub Release with the DMG, app ZIP and checksums. **Build downloadable preview** remains available for unpublished review artifacts. See [distribution](docs/distribution.md) for the release steps. All local user data stays in `~/Library/Application Support/Pawlet/`. No accounts, telemetry, server, API key or accessibility/screen-recording permission is needed to run pets.
 
+## Windows (preview)
+
+Requires Windows 10/11 and the [.NET 8 SDK](https://dotnet.microsoft.com/download/dotnet/8.0). The Mac tree (`Sources/`, `scripts/build.sh`) is unchanged; Windows lives under `windows/` and does not need Xcode.
+
+```sh
+git clone https://github.com/ruzwid/pawlet.git
+cd pawlet
+dotnet run --project windows/src/Pawlet -c Release
+```
+
+Import a pack from the command line (path after `--`):
+
+```sh
+dotnet run --project windows/src/Pawlet -c Release -- --import path\to\Mochi.petpack
+```
+
+An empty library seeds bundled Mochi on first run and opens the library window. The tray offers Show library, Show all, Hide all, Pause, and Quit. Closing the library keeps desktop minis running; Quit hides pets, then exits.
+
+Data lives under `%AppData%\Pawlet\` (`Library\<id>\` for packs, `settings.json` for preferences). **Start with Windows** writes a CurrentUser `Run` value named `Pawlet`. To disable it: uncheck the option in the library Settings panel, turn it off in Task Manager → Startup apps, or delete `HKCU\Software\Microsoft\Windows\CurrentVersion\Run\Pawlet` in Registry Editor.
+
+**MVP non-goals.** This preview is unsigned (no Microsoft Store or code-signing pipeline). It does not include Codex Create, Export for Codex / `.petpack` export, full Mac Settings parity (Spaces, Dock visibility, animation preview inspector), WinUI or Tauri pet hosts, an installer (MSIX/EXE), or gaze polish beyond the animation engine port. Packs are data only; import rejects path traversal and other unsafe ZIP entries.
+
+CI: `.github/workflows/windows.yml` builds `windows/Pawlet.sln` and runs `dotnet test` on `windows-latest`.
+
 ## Next milestones
 
 - Add Developer ID signing and Apple notarization to the downloadable releases.
