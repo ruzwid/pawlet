@@ -26,3 +26,9 @@ jobs:
         run: |
           codesign --verify --deep --strict 'build/Pawlet.app'
           lipo -archs 'build/Pawlet.app/Contents/MacOS/Pawlet'
+      - name: Verify decorated installer preserves the signed app
+        if: matrix.runner == 'macos-15'
+        run: |
+          .venv/bin/python -m pip install -r requirements-release.txt
+          RELEASE_PYTHON=.venv/bin/python bash scripts/package-dmg.sh \
+            build/Pawlet.app build/Pawlet-installer-check.dmg

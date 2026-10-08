@@ -1,3 +1,5 @@
+New in **0.7.1**: a compact installer with a quiet dotted background, fading chevrons toward Applications, and small Mochi and Paris details. The artwork has no text and includes Retina resolution. Installation still uses the normal Mac drag-and-drop flow.
+
 Download the **Pawlet DMG** under Assets, open it, and drag **Pawlet.app** to **Applications**. The ZIP is an alternative: expand it and move Pawlet.app to Applications.
 
 Requires **macOS 13 or later**. One download supports **Apple silicon and Intel Macs**. No Git, Xcode, npm, Python, Codex or Apple Developer account is needed to run the app. Mochi and Paris are included; existing minis run offline.
