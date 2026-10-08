@@ -1,4 +1,4 @@
-New in **0.7.1**: a custom installer with Mochi and Paris on floating clouds, a pawprint path to Applications, and a Retina background. Installation still uses the normal Mac drag-and-drop flow.
+New in **0.7.1**: a compact installer with a quiet dotted background, fading chevrons toward Applications, and small Mochi and Paris details. The artwork has no text and includes Retina resolution. Installation still uses the normal Mac drag-and-drop flow.
 
 Download the **Pawlet DMG** under Assets, open it, and drag **Pawlet.app** to **Applications**. The ZIP is an alternative: expand it and move Pawlet.app to Applications.
 
