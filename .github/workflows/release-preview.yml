@@ -8,8 +8,12 @@ jobs:
     runs-on: macos-15
     steps:
       - uses: actions/checkout@v7
+      - name: DMG packaging dependencies
+        run: |
+          python3 -m venv .venv
+          .venv/bin/python -m pip install -r requirements-release.txt
       - name: Build and package preview
-        run: bash scripts/release.sh
+        run: RELEASE_PYTHON=.venv/bin/python bash scripts/release.sh
       - uses: actions/upload-artifact@v7
         with:
           name: Pawlet-Mac-preview

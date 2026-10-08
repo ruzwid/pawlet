@@ -1,3 +1,5 @@
+New in **0.7.1**: a custom installer with Mochi and Paris on floating clouds, a pawprint path to Applications, and a Retina background. Installation still uses the normal Mac drag-and-drop flow.
+
 Download the **Pawlet DMG** under Assets, open it, and drag **Pawlet.app** to **Applications**. The ZIP is an alternative: expand it and move Pawlet.app to Applications.
 
 Requires **macOS 13 or later**. One download supports **Apple silicon and Intel Macs**. No Git, Xcode, npm, Python, Codex or Apple Developer account is needed to run the app. Mochi and Paris are included; existing minis run offline.

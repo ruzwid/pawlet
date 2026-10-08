@@ -37,12 +37,12 @@ jobs:
             echo "::error::Tag must match the app version: v$version"
             exit 1
           fi
-      - name: Build and package universal app
-        run: bash scripts/release.sh
-      - name: Packaging test dependencies
+      - name: Packaging dependencies
         run: |
           python3 -m venv .venv
-          .venv/bin/python -m pip install -r requirements-dev.txt
+          .venv/bin/python -m pip install -r requirements-dev.txt -r requirements-release.txt
+      - name: Build and package universal app
+        run: RELEASE_PYTHON=.venv/bin/python bash scripts/release.sh
       - name: Verify behavior and pet packs
         run: PYTHON=.venv/bin/python bash scripts/test.sh
       - uses: actions/upload-artifact@v7

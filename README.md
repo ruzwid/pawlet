@@ -101,9 +101,9 @@ python3 -m venv .venv
 PYTHON=.venv/bin/python bash scripts/test.sh --ui
 ```
 
-The build has no downloaded Swift dependencies. By default it compiles a universal binary; use `ARCHS=arm64` or `ARCHS=x86_64` for a faster local build. Python/Pillow are needed only for the pack helper and its tests, never for the app at runtime. Use `bash scripts/release.sh` to create a DMG, app ZIP and SHA-256 checksums in `dist/`.
+The build has no downloaded Swift dependencies. By default it compiles a universal binary; use `ARCHS=arm64` or `ARCHS=x86_64` for a faster local build. Python/Pillow are needed only for the pack helper and its tests, never for the app at runtime. Release packaging additionally uses `requirements-release.txt` to configure Finder's illustrated DMG window; see [the local release setup](docs/distribution.md#package-locally). It produces a DMG, app ZIP and SHA-256 checksums in `dist/`.
 
-Read [CONTRIBUTING.md](CONTRIBUTING.md) and the [architecture](docs/architecture.md). GitHub Actions checks both Mac architectures. Pushing a version tag such as `v0.7.0` runs **Publish Mac download**, which builds, tests and publishes a GitHub Release with the DMG, app ZIP and checksums. **Build downloadable preview** remains available for unpublished review artifacts. See [distribution](docs/distribution.md) for the release steps. All local user data stays in `~/Library/Application Support/Pawlet/`. No accounts, telemetry, server, API key or accessibility/screen-recording permission is needed to run pets.
+Read [CONTRIBUTING.md](CONTRIBUTING.md) and the [architecture](docs/architecture.md). GitHub Actions checks both Mac architectures. Pushing a version tag such as `v0.7.1` runs **Publish Mac download**, which builds, tests and publishes a GitHub Release with the DMG, app ZIP and checksums. **Build downloadable preview** remains available for unpublished review artifacts. See [distribution](docs/distribution.md) for the release steps. All local user data stays in `~/Library/Application Support/Pawlet/`. No accounts, telemetry, server, API key or accessibility/screen-recording permission is needed to run pets.
 
 ## Next milestones
 
