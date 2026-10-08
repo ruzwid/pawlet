@@ -26,7 +26,9 @@ scroll_position = (0, 0)
 icon_size = 88
 text_size = 15
 label_pos = "bottom"
-hide_extensions = ["Pawlet.app", "Read Me.txt"]
+# Finder already hides .app. SetFile on the signed bundle would add FinderInfo
+# metadata and invalidate strict signature verification after packaging.
+hide_extensions = ["Read Me.txt"]
 icon_locations = {
     "Pawlet.app": (230, 270),
     "Applications": (570, 270),

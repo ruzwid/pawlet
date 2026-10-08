@@ -13,7 +13,15 @@ if ! "$task_python" -c 'import dmgbuild' 2>/dev/null; then
     exit 1
 fi
 task_temporary=$(mktemp -d "${TMPDIR:-/tmp}/pawlet-dmg.XXXXXX")
-trap 'rm -rf "$task_temporary"' EXIT
+task_mounted=false
+cleanup() {
+    if [[ "$task_mounted" == true ]]; then
+        # Leave a failed-to-detach mount recoverable rather than deleting into it.
+        hdiutil detach "$task_temporary/verify" >/dev/null || return
+    fi
+    rm -rf "$task_temporary"
+}
+trap cleanup EXIT
 mkdir -p "$task_temporary/art" "$task_temporary/module-cache" "$(dirname -- "$task_dmg")"
 xcrun swiftc "$task_root/Tools/make-dmg-background.swift" \
     -module-cache-path "$task_temporary/module-cache" -o "$task_temporary/render"
@@ -25,3 +33,13 @@ tiffutil -cathidpicheck "$task_temporary/art/background.png" \
     -D "icon=$task_root/Resources/AppIcon.icns" \
     -D "background=$task_temporary/art/background.tiff" \
     'Pawlet' "$task_dmg"
+
+# Verify the exact signed bundle stored in the finished image, after all Finder
+# decoration has been applied. Metadata changes can break an otherwise valid app.
+mkdir "$task_temporary/verify"
+hdiutil attach -readonly -nobrowse -mountpoint "$task_temporary/verify" "$task_dmg" >/dev/null
+task_mounted=true
+codesign --verify --deep --strict "$task_temporary/verify/Pawlet.app"
+cmp "$task_app/Contents/MacOS/Pawlet" "$task_temporary/verify/Pawlet.app/Contents/MacOS/Pawlet"
+hdiutil detach "$task_temporary/verify" >/dev/null
+task_mounted=false
